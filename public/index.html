@@ -2,52 +2,97 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>NutriDelivery - Iniciar Sesión</title>
-    <style>
-        /* CSS: Esto le da el diseño y colores a tu página */
-        body { font-family: Arial, sans-serif; background-color: #f4f4f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .login-box { background: white; padding: 20px; border-radius: 8px; box-shadow: 0px 0px 10px rgba(0,0,0,0.1); width: 300px; text-align: center; }
-        input { width: 90%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px; }
-        button { background-color: #28a745; color: white; border: none; padding: 10px; width: 100%; border-radius: 4px; cursor: pointer; }
-        button:hover { background-color: #218838; }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NutriDelivery - Demostración SQL (13 Consultas)</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<div class="container">
+    <header>
+        <div>
+            <h1>NutriDelivery - Demostración SQL</h1>
+            <p>13 Requerimientos SQL ejecutados en SQLite (Express Modularizado)</p>
+        </div>
+        <span class="badge" id="statusBadge">Conectado a SQLite</span>
+    </header>
 
-<div class="login-box">
-    <h2>Ingreso NutriDelivery</h2>
-    <!-- El formulario donde el usuario ingresa sus datos -->
-    <form id="loginForm">
-        <input type="email" id="correo" placeholder="Tu Correo Electrónico" required>
-        <input type="password" id="password" placeholder="Tu Contraseña" required>
-        <button type="submit">Iniciar Sesión</button>
-    </form>
-    <p id="mensaje"></p>
+    <div class="grid">
+        <div>
+            <!-- Formulario para Registrar Nuevo Cliente -->
+            <div class="card">
+                <h2>4. Registrar Nuevo Cliente (INSERT interactivo)</h2>
+                <form id="formNuevoCliente">
+                    <input type="text" id="cliNombre" placeholder="Nombre completo (ej. Juan Perez)" required>
+                    <input type="email" id="cliCorreo" placeholder="Correo (ej. juan@mail.com)" required>
+                    <input type="password" id="cliPassword" placeholder="Contraseña" required>
+                    <div style="display:flex; gap:8px;">
+                        <input type="number" step="0.1" id="cliPeso" placeholder="Peso (kg)" required>
+                        <input type="number" step="0.01" id="cliAltura" placeholder="Altura (m)" required>
+                        <input type="number" id="cliEdad" placeholder="Edad" required>
+                    </div>
+                    <select id="cliGenero" style="width:100%; padding:8px; margin:6px 0; border:1px solid #ccc; border-radius:4px;">
+                        <option value="Masculino">Masculino</option>
+                        <option value="Femenino">Femenino</option>
+                        <option value="Otro">Otro</option>
+                    </select>
+                    <button type="submit" class="btn-insert" style="width:100%; text-align:center;">Guardar Cliente (INSERT)</button>
+                </form>
+            </div>
+
+            <!-- Formulario para Actualizar Peso/Altura -->
+            <div class="card">
+                <h2>6. Actualizar Datos Físicos (UPDATE interactivo)</h2>
+                <form id="formUpdateCliente">
+                    <div style="display:flex; gap:8px;">
+                        <input type="number" id="updId" placeholder="ID Cliente (ej. 1)" required>
+                        <input type="number" step="0.1" id="updPeso" placeholder="Nuevo Peso (kg)" required>
+                        <input type="number" step="0.01" id="updAltura" placeholder="Nueva Altura (m)" required>
+                    </div>
+                    <button type="submit" class="btn-update" style="width:100%; text-align:center;">Actualizar Físico (UPDATE)</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>Panel de Consultas SQL (13 Requerimientos)</h2>
+                <div class="btn-grid">
+                    <button class="btn-select" onclick="ejecutar('/api/consultas/clientes', 'GET')">1. SELECT Clientes</button>
+                    <button class="btn-select" onclick="ejecutar('/api/consultas/planes', 'GET')">2. SELECT Planes (>20)</button>
+                    <button class="btn-select" onclick="ejecutar('/api/consultas/estadisticas', 'GET')">3. SELECT Stats (AVG/COUNT)</button>
+                    <button class="btn-insert" onclick="ejecutar('/api/consultas/pedidos', 'POST', { idCliente: 1, idPlan: 2, total: 59.99 })">5. INSERT Pedido</button>
+                    <button class="btn-update" onclick="ejecutar('/api/consultas/pedidos/estado', 'PUT', { idPedido: 1, nuevoEstado: 'En Reparto' })">7. UPDATE Estado Pedido</button>
+                    <button class="btn-join" onclick="ejecutar('/api/consultas/pedidos-detallados', 'GET')">8. INNER JOIN Pedido+Cliente+Plan</button>
+                    <button class="btn-join" onclick="ejecutar('/api/consultas/clientes-pedidos', 'GET')">9. LEFT JOIN Cliente con Pedidos</button>
+                    <button class="btn-delete" onclick="ejecutar('/api/consultas/pedidos/ultimo', 'DELETE')">10. DELETE Pedido Prueba</button>
+                    <button class="btn-alter" onclick="ejecutar('/api/consultas/alter-table', 'POST')">11. ALTER TABLE Add Telefono</button>
+                    <button class="btn-status" onclick="ejecutar('/api/consultas/crear-tabla-auditoria', 'POST')">12. CREATE TABLE Auditoria</button>
+                    <button class="btn-drop" onclick="ejecutar('/api/consultas/drop-tabla-auditoria', 'DELETE')">13. DROP TABLE Auditoria</button>
+                    <button class="btn-status" onclick="ejecutar('/api/consultas/estado', 'GET')">Resumen Base de Datos</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Prueba de Login (/api/login)</h2>
+                <form id="loginForm">
+                    <input type="email" id="correo" value="andrea@mail.com" required>
+                    <input type="password" id="password" value="secreta123" required>
+                    <button type="submit" class="btn-login">Iniciar Sesión</button>
+                </form>
+                <p id="mensajeLogin" style="margin-top:10px; font-weight:bold;"></p>
+            </div>
+        </div>
+
+        <div>
+            <div class="card">
+                <h2>Resultado de la Consulta en Tiempo Real</h2>
+                <div class="sql-viewer" id="sqlViewer">
+                    Selecciona un botón de la izquierda para ejecutar la consulta SQL.
+                </div>
+                <pre id="outputJSON">// Respuesta JSON aparecerá aquí...</pre>
+            </div>
+        </div>
+    </div>
 </div>
 
-<script>
-    // JavaScript: Hace la validación básica y envía los datos al Backend[cite: 3]
-    document.getElementById('loginForm').addEventListener('submit', async function(e) {
-        e.preventDefault(); // Evita que la página se recargue
-
-        const correo = document.getElementById('correo').value;
-        const password = document.getElementById('password').value;
-
-        // Aquí el Frontend envía una petición HTTP (POST) a la API del Backend
-        try {
-            const respuesta = await fetch('/api/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ correo: correo, password: password })
-            });
-
-            const datos = await respuesta.json();
-            document.getElementById('mensaje').innerText = datos.mensaje;
-            
-        } catch (error) {
-            document.getElementById('mensaje').innerText = "Error al conectar con el servidor.";
-        }
-    });
-</script>
+<script src="app.js"></script>
 </body>
 </html>
