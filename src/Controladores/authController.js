@@ -1,20 +1,18 @@
-const db = require('../config/db');
+const Cliente = require('../Modelos/Cliente');
 
-exports.login = (req, res) => {
+exports.login = async (req, res) => {
     const { correo, password } = req.body;
 
-    // Consulta buscando el correo y clave
-    const consulta = 'SELECT * FROM Cliente WHERE Correo = ? AND Password = ?';
-
-    db.all(consulta, [correo, password], (error, resultados) => {
-        if (error) {
-            return res.status(500).json({ mensaje: 'Error en la base de datos' });
-        }
+    try {
+        const resultados = await Cliente.buscarPorCredenciales(correo, password);
 
         if (resultados.length > 0) {
             res.json({ mensaje: '¡Login exitoso! Bienvenido a NutriDelivery.' });
         } else {
             res.status(401).json({ mensaje: 'Correo o contraseña incorrectos.' });
         }
-    });
+    } catch (error) {
+        res.status(500).json({ mensaje: 'Error en la base de datos', detalle: error.message });
+    }
 };
+
