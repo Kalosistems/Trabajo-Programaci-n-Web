@@ -20,6 +20,6 @@ Frontend: HTML, CSS
 
 Backend: JS, NODE.JS
 
-Bases de Datos: SQLITE
+Bases de Datos: SQLITE, MongoDB Atlas
 
 Integraciones: API REST para cálculo de macronutrientes e implementación de JWT para seguridad de usuarios.
