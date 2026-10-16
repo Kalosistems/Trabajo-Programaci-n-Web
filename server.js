@@ -35,9 +35,12 @@ app.get('/api/mongo/test', async (req, res) => {
     }
 });
 
+const mongoRoutes = require('./src/Rutas/mongoRoutes');
+
 // Rutas modularizadas bajo el prefijo /api
 app.use('/api', authRoutes);
 app.use('/api/consultas', consultaRoutes);
+app.use('/api/mongo', mongoRoutes);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

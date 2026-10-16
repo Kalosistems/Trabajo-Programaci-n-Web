@@ -17,7 +17,9 @@ async function ejecutar(url, metodo, cuerpo = null) {
         const res = await fetch(url, opciones);
         const data = await res.json();
         
-        if (data.sql) {
+        if (data.consultaMQL) {
+            sqlViewer.innerHTML = `<strong>Tipo:</strong> ${data.tipo} | <strong>Descripción:</strong> ${data.descripcion}<br><br><code style="color:#27ae60;">${data.consultaMQL}</code>${data.beneficioNoSQL ? `<br><br><small style="color:#16a085; font-weight:bold;">💡 Beneficio NoSQL: ${data.beneficioNoSQL}</small>` : ''}`;
+        } else if (data.sql) {
             sqlViewer.innerHTML = `<strong>Tipo:</strong> ${data.tipo || 'SQL'} | <strong>Descripción:</strong> ${data.descripcion || ''}<br><br><code>${data.sql}</code>`;
         } else {
             sqlViewer.innerHTML = `<strong>Operación completada con éxito</strong>`;

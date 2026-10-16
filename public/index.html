@@ -10,10 +10,13 @@
 <div class="container">
     <header>
         <div>
-            <h1>NutriDelivery - Demostración SQL</h1>
-            <p>13 Requerimientos SQL ejecutados en SQLite (Express Modularizado)</p>
+            <h1>NutriDelivery & Kalo - SQL vs NoSQL</h1>
+            <p>Demostración Relacional (SQLite) y Documental (MongoDB Atlas)</p>
         </div>
-        <span class="badge" id="statusBadge">Conectado a SQLite</span>
+        <div style="display:flex; gap:8px;">
+            <span class="badge" id="statusBadge" style="background:#2c3e50;">SQLite Activo</span>
+            <span class="badge" style="background:#27ae60;">🍃 MongoDB Atlas Conectado</span>
+        </div>
     </header>
 
     <div class="grid">
@@ -52,8 +55,25 @@
                 </form>
             </div>
 
+            <!-- Panel de Consultas MongoDB Atlas (Etapa 2 - NoSQL) -->
+            <div class="card" style="border: 2px solid #27ae60; background: #fdfefe;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+                    <h2 style="color:#27ae60; margin:0;">🍃 Consultas MongoDB Atlas (Etapa 2 - NoSQL)</h2>
+                    <span class="badge" style="background:#27ae60; color:white;">Atlas en la Nube</span>
+                </div>
+                <p style="font-size:13px; color:#555; margin-top:0;">Operaciones MQL en tiempo real: modelos embebidos, sin JOINs y agregaciones.</p>
+                <div class="btn-grid">
+                    <button class="btn-select" style="background:#27ae60;" onclick="ejecutar('/api/mongo/usuarios', 'GET')">1. find() Usuarios (IMC embebido)</button>
+                    <button class="btn-select" style="background:#16a085;" onclick="ejecutar('/api/mongo/planes', 'GET')">2. find({ precio: { $gt: 20 } })</button>
+                    <button class="btn-join" style="background:#2980b9;" onclick="ejecutar('/api/mongo/pedidos-sin-join', 'GET')">3. Pedidos (¡Cero JOINs!)</button>
+                    <button class="btn-status" style="background:#8e44ad;" onclick="ejecutar('/api/mongo/estadisticas', 'GET')">4. aggregate([ $group, $avg ])</button>
+                    <button class="btn-insert" style="background:#d35400;" onclick="ejecutar('/api/mongo/pedidos', 'POST')">5. create() Nuevo Pedido (con PIN)</button>
+                    <button class="btn-update" style="background:#c0392b;" onclick="ejecutar('/api/mongo/usuarios/peso', 'PUT', { nuevoPeso: 73.5 })">6. updateOne() $set Peso/IMC</button>
+                </div>
+            </div>
+
             <div class="card">
-                <h2>Panel de Consultas SQL (13 Requerimientos)</h2>
+                <h2>Panel de Consultas SQL (Etapa 1 - SQLite Relacional)</h2>
                 <div class="btn-grid">
                     <button class="btn-select" onclick="ejecutar('/api/consultas/clientes', 'GET')">1. SELECT Clientes</button>
                     <button class="btn-select" onclick="ejecutar('/api/consultas/planes', 'GET')">2. SELECT Planes (>20)</button>
