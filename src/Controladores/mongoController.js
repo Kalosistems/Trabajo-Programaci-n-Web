@@ -180,3 +180,4 @@ exports.actualizarPesoUsuario = async (req, res) => {
         res.status(500).json({ exito: false, error: error.message });
     }
 };
+
