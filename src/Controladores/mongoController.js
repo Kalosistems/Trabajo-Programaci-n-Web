@@ -12,9 +12,26 @@
 const Usuario = require('../Modelos/mongo/Usuario');
 const PlanNutricionalMongo = require('../Modelos/mongo/PlanNutricional');
 const PedidoMongo = require('../Modelos/mongo/Pedido');
+const { mongoose } = require('../config/mongo');
+
+function verificarConexion(res) {
+    if (mongoose.connection.readyState !== 1) {
+        const estados = { 0: 'Desconectado', 2: 'Conectando...', 3: 'Desconectando...' };
+        const estadoActual = estados[mongoose.connection.readyState] || 'Desconocido';
+        res.status(503).json({
+            exito: false,
+            error: `MongoDB Atlas no está conectado aún (Estado: ${estadoActual}).`,
+            causaPrincipal: 'La variable de entorno MONGO_URI no está configurada en Railway, o MongoDB Atlas aún no tiene la IP 0.0.0.0/0 activa.',
+            solucion: '1. En Railway -> Variables, verifica que MONGO_URI esté configurada. 2. En MongoDB Atlas -> Network Access, verifica que 0.0.0.0/0 esté en verde (Active).'
+        });
+        return false;
+    }
+    return true;
+}
 
 // 1. SELECT NoSQL: Listar usuarios con perfil biométrico embebido
 exports.getUsuarios = async (req, res) => {
+    if (!verificarConexion(res)) return;
     try {
         const mql = 'Usuario.find({}, { password_hash: 0 })';
         const data = await Usuario.find({}, { password_hash: 0 });
@@ -32,6 +49,7 @@ exports.getUsuarios = async (req, res) => {
 
 // 2. FILTRO MQL: Planes con precio > 20 ordenados descendentemente
 exports.getPlanes = async (req, res) => {
+    if (!verificarConexion(res)) return;
     try {
         const mql = 'PlanNutricional.find({ precio_mensual: { $gt: 20 }, activo: true }).sort({ precio_mensual: -1 })';
         const data = await PlanNutricionalMongo.find({ precio_mensual: { $gt: 20 }, activo: true }).sort({ precio_mensual: -1 });
@@ -49,6 +67,7 @@ exports.getPlanes = async (req, res) => {
 
 // 3. SIN JOIN: Pedidos detallados mediante Referencia Extendida y Snapshot
 exports.getPedidosSinJoin = async (req, res) => {
+    if (!verificarConexion(res)) return;
     try {
         const mql = 'Pedido.find().sort({ fecha_pedido: -1 }) // Resuelto sin $lookup gracias a Referencia Extendida';
         const data = await PedidoMongo.find().sort({ fecha_pedido: -1 });

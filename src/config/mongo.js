@@ -5,11 +5,19 @@ const mongoose = require('mongoose');
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/nutridelivery';
 
 const conectarMongo = async () => {
+    const mongoUri = process.env.MONGO_URI;
+    if (!mongoUri) {
+        console.error('❌ ERROR CRÍTICO: La variable MONGO_URI no está configurada en las Variables de Entorno.');
+        return;
+    }
+
     try {
-        await mongoose.connect(MONGO_URI);
+        await mongoose.connect(mongoUri, {
+            serverSelectionTimeoutMS: 5000
+        });
         console.log(' ¡Conexión exitosa a MongoDB Atlas en la nube!');
     } catch (error) {
-        console.error('❌ Error conectando a MongoDB:', error.message);
+        console.error('❌ Error conectando a MongoDB Atlas:', error.message);
     }
 };
 
