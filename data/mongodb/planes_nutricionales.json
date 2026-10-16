@@ -1,0 +1,41 @@
+[
+  {
+    "_id": "6620f2b8e13b8a1c90000001",
+    "nombre_plan": "Definición Muscular",
+    "calorias_diarias": 1800,
+    "objetivo": "Pérdida de grasa y tonificación",
+    "precio_mensual": 49.99,
+    "activo": true,
+    "tags": [
+      "nutricion",
+      "saludable",
+      "dark kitchen"
+    ]
+  },
+  {
+    "_id": "6620f2b8e13b8a1c90000002",
+    "nombre_plan": "Volumen Limpio",
+    "calorias_diarias": 2600,
+    "objetivo": "Ganancia de masa muscular magra",
+    "precio_mensual": 59.99,
+    "activo": true,
+    "tags": [
+      "nutricion",
+      "saludable",
+      "dark kitchen"
+    ]
+  },
+  {
+    "_id": "6620f2b8e13b8a1c90000003",
+    "nombre_plan": "Salud y Vitalidad",
+    "calorias_diarias": 2000,
+    "objetivo": "Mantenimiento y nutrición balanceada",
+    "precio_mensual": 39.99,
+    "activo": true,
+    "tags": [
+      "nutricion",
+      "saludable",
+      "dark kitchen"
+    ]
+  }
+]

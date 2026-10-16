@@ -4,7 +4,7 @@ async function ejecutar(url, metodo, cuerpo = null) {
     
     sqlViewer.innerText = 'Ejecutando petición...';
     outputJSON.innerText = 'Cargando...';
-
+     
     try {
         const opciones = {
             method: metodo,

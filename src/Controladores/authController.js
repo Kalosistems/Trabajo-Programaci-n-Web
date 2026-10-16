@@ -2,7 +2,7 @@ const Cliente = require('../Modelos/Cliente');
 
 exports.login = async (req, res) => {
     const { correo, password } = req.body;
-
+    // Validar Que las credenciales no estén vacías y que el correo sea uno en la base de datos.
     try {
         const resultados = await Cliente.buscarPorCredenciales(correo, password);
 
