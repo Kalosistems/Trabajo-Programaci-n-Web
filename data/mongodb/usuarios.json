@@ -1,91 +1,55 @@
 [
   {
     "_id": "6620f1a4e13b8a1c90000001",
-    "nombre": "Andrea Gomez",
+    "nombre": "Andrea Gómez",
     "correo": "andrea@mail.com",
     "password_hash": "$2b$10$hashed_secreta123",
     "telefono": "+56912345678",
     "activo": true,
     "fecha_registro": "2026-03-01T12:00:00.000Z",
     "perfil_biometrico": {
-      "peso_kg": 71.0,
-      "altura_m": 1.74,
+      "peso_kg": 68.5,
+      "altura_m": 1.65,
       "edad": 28,
       "genero": "Femenino",
-      "imc": 23.45,
-      "meta_calorica_diaria": 2088,
-      "objetivo_salud": "Mantenimiento y nutrición balanceada"
+      "imc": 25.16,
+      "meta_calorica_diaria": 1850,
+      "objetivo_salud": "Pérdida de grasa y tonificación"
     }
   },
   {
     "_id": "6620f1a4e13b8a1c90000002",
-    "nombre": "benjamin figueroa",
-    "correo": "benajmin.fioguero@gmail.com",
-    "password_hash": "$2b$10$hashed_1234",
-    "telefono": "+56912345678",
+    "nombre": "Benjamín Figueroa",
+    "correo": "benjamin.figueroam@estudiantes.uv.cl",
+    "password_hash": "$2b$10$hashed_claveSegura456",
+    "telefono": "+56987654321",
     "activo": true,
-    "fecha_registro": "2026-03-01T12:00:00.000Z",
+    "fecha_registro": "2026-03-05T10:15:00.000Z",
     "perfil_biometrico": {
-      "peso_kg": 71.0,
-      "altura_m": 1.74,
-      "edad": 10,
+      "peso_kg": 75.0,
+      "altura_m": 1.78,
+      "edad": 22,
       "genero": "Masculino",
-      "imc": 23.45,
-      "meta_calorica_diaria": 2531,
-      "objetivo_salud": "Mantenimiento y nutrición balanceada"
+      "imc": 23.67,
+      "meta_calorica_diaria": 2450,
+      "objetivo_salud": "Ganancia de masa muscular magra"
     }
   },
   {
     "_id": "6620f1a4e13b8a1c90000003",
-    "nombre": "benjamin figueroa",
-    "correo": "benjamin.figueroam@estudiantes.uv.cl",
-    "password_hash": "$2b$10$hashed_Elpepe123",
-    "telefono": "+56912345678",
+    "nombre": "Ariadna Espejo",
+    "correo": "ariadna.espejo@mail.com",
+    "password_hash": "$2b$10$hashed_ariadna789",
+    "telefono": "+56955554444",
     "activo": true,
-    "fecha_registro": "2026-03-01T12:00:00.000Z",
+    "fecha_registro": "2026-03-10T14:30:00.000Z",
     "perfil_biometrico": {
-      "peso_kg": 71.0,
-      "altura_m": 1.74,
-      "edad": 21,
-      "genero": "Masculino",
-      "imc": 23.45,
-      "meta_calorica_diaria": 2428,
-      "objetivo_salud": "Mantenimiento y nutrición balanceada"
-    }
-  },
-  {
-    "_id": "6620f1a4e13b8a1c90000004",
-    "nombre": "ariadna espejo",
-    "correo": "ari@gmail.com",
-    "password_hash": "$2b$10$hashed_Ari",
-    "telefono": "+56912345678",
-    "activo": true,
-    "fecha_registro": "2026-03-01T12:00:00.000Z",
-    "perfil_biometrico": {
-      "peso_kg": 120.0,
-      "altura_m": 1.2,
-      "edad": 67,
+      "peso_kg": 62.0,
+      "altura_m": 1.68,
+      "edad": 23,
       "genero": "Femenino",
-      "imc": 83.33,
-      "meta_calorica_diaria": 2349,
-      "objetivo_salud": "Mantenimiento y nutrición balanceada"
-    }
-  },
-  {
-    "_id": "6620f1a4e13b8a1c90000005",
-    "nombre": "benja",
-    "correo": "benja@gmail.com",
-    "password_hash": "$2b$10$hashed_123",
-    "telefono": "+56912345678",
-    "activo": true,
-    "fecha_registro": "2026-03-01T12:00:00.000Z",
-    "perfil_biometrico": {
-      "peso_kg": 20.0,
-      "altura_m": 1.7,
-      "edad": 21,
-      "genero": "Masculino",
-      "imc": 6.92,
-      "meta_calorica_diaria": 1440,
+      "imc": 21.97,
+      "meta_calorica_diaria": 1950,
       "objetivo_salud": "Mantenimiento y nutrición balanceada"
     }
   }

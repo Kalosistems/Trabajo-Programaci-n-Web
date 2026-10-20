@@ -7,9 +7,9 @@
     "precio_mensual": 49.99,
     "activo": true,
     "tags": [
-      "nutricion",
-      "saludable",
-      "dark kitchen"
+      "deficit calorico",
+      "alto en proteina",
+      "saludable"
     ]
   },
   {
@@ -20,9 +20,9 @@
     "precio_mensual": 59.99,
     "activo": true,
     "tags": [
-      "nutricion",
-      "saludable",
-      "dark kitchen"
+      "superavit calorico",
+      "fitness",
+      "hipertrofia"
     ]
   },
   {
@@ -33,9 +33,9 @@
     "precio_mensual": 39.99,
     "activo": true,
     "tags": [
-      "nutricion",
-      "saludable",
-      "dark kitchen"
+      "balanceado",
+      "salud general",
+      "antioxidantes"
     ]
   }
 ]
