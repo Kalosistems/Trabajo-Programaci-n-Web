@@ -3,116 +3,357 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NutriDelivery - Demostración SQL (13 Consultas)</title>
+    <title>Kalo - Nutrición y Delivery Transparente</title>
     <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-<div class="container">
-    <header>
-        <div>
-            <h1>NutriDelivery & Kalo - SQL vs NoSQL</h1>
-            <p>Demostración Relacional (SQLite) y Documental (MongoDB Atlas)</p>
-        </div>
-        <div style="display:flex; gap:8px;">
-            <span class="badge" id="statusBadge" style="background:#2c3e50;">SQLite Activo</span>
-            <span class="badge" style="background:#27ae60;">🍃 MongoDB Atlas Conectado</span>
-        </div>
-    </header>
 
-    <div class="grid">
-        <div>
-            <!-- Formulario para Registrar Nuevo Cliente -->
-            <div class="card">
-                <h2>4. Registrar Nuevo Cliente (INSERT interactivo)</h2>
-                <form id="formNuevoCliente">
-                    <input type="text" id="cliNombre" placeholder="Nombre completo (ej. Juan Perez)" required>
-                    <input type="email" id="cliCorreo" placeholder="Correo (ej. juan@mail.com)" required>
-                    <input type="password" id="cliPassword" placeholder="Contraseña" required>
-                    <div style="display:flex; gap:8px;">
-                        <input type="number" step="0.1" id="cliPeso" placeholder="Peso (kg)" required>
-                        <input type="number" step="0.01" id="cliAltura" placeholder="Altura (m)" required>
-                        <input type="number" id="cliEdad" placeholder="Edad" required>
+    <!-- NOTIFICACIÓN GLOBAL (Toast) -->
+    <div id="toast" class="toast hidden"></div>
+
+    <!-- 0. PANTALLA DE LOGIN INICIAL -->
+    <section id="pantallaLogin" class="pantalla-login">
+        <div class="login-card">
+            <div class="brand">
+                <span class="brand-badge">Etapa 2 · NoSQL MongoDB Atlas</span>
+                <h1>🥗 Kalo</h1>
+                <p>Plataforma de Nutrición Transparente y Delivery Seguro</p>
+            </div>
+
+            <form id="formLogin">
+                <div class="form-group">
+                    <label for="loginCorreo">Correo Electrónico</label>
+                    <input type="email" id="loginCorreo" placeholder="ejemplo@kalo.cl" required>
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword">Contraseña</label>
+                    <input type="password" id="loginPassword" placeholder="••••••••" required>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">Iniciar Sesión</button>
+            </form>
+
+            <div class="login-demo-bar">
+                <p class="demo-title">Accesos Rápidos de Prueba (Presentación):</p>
+                <div class="demo-buttons">
+                    <button type="button" class="btn-demo btn-demo-cliente" onclick="autocompletarLogin('andrea@mail.com', 'secreta123')">
+                        👤 Rol Cliente (Andrea Gómez)
+                    </button>
+                    <button type="button" class="btn-demo btn-demo-restaurante" onclick="autocompletarLogin('contacto@greenbowl.cl', 'restaurante123')">
+                        🏪 Rol Restaurante (Green Bowl)
+                    </button>
+                    <button type="button" class="btn-demo btn-demo-repartidor" onclick="autocompletarLogin('carlos.reparto@kalo.cl', 'repartidor123')">
+                        🛵 Rol Repartidor Mobile-First (Carlos)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- APLICACIÓN PRINCIPAL (Tras Login) -->
+    <div id="appPrincipal" class="hidden">
+        
+        <!-- BARRA SUPERIOR DE NAVEGACIÓN -->
+        <header class="navbar">
+            <div class="nav-brand">
+                <h2>🥗 Kalo</h2>
+                <span id="badgeRolUsuario" class="badge">Rol: Cliente</span>
+            </div>
+            <div class="nav-user-info">
+                <span id="nombreUsuarioHeader">Usuario Activo</span>
+                <!-- Botón Carrito (Solo visible en Rol Cliente) -->
+                <button id="btnVerCarrito" class="btn btn-carrito" onclick="abrirModalCarrito()">
+                    🛒 Carrito <span id="contadorCarrito" class="carrito-badge">0</span>
+                </button>
+                <button id="btnVerConsultasNoSQL" class="btn btn-nosql" onclick="abrirModalNoSQL()">🍃 Panel NoSQL (Evaluación)</button>
+                <button id="btnCerrarSesion" class="btn btn-outline" onclick="cerrarSesion()">Cerrar Sesión</button>
+            </div>
+        </header>
+
+        <!-- 1. VISTA CLIENTE / CONSUMIDOR -->
+        <main id="vistaCliente" class="vista-rol hidden">
+            <div class="container">
+                
+                <!-- Resumen de Perfil Biométrico del Cliente -->
+                <section class="biometric-banner">
+                    <div class="bio-text">
+                        <h3>Tu Perfil Biométrico Kalo</h3>
+                        <p>Datos sincronizados en tiempo real con MongoDB Atlas:</p>
                     </div>
-                    <select id="cliGenero" style="width:100%; padding:8px; margin:6px 0; border:1px solid #ccc; border-radius:4px;">
-                        <option value="Masculino">Masculino</option>
-                        <option value="Femenino">Femenino</option>
-                        <option value="Otro">Otro</option>
-                    </select>
-                    <button type="submit" class="btn-insert" style="width:100%; text-align:center;">Guardar Cliente (INSERT)</button>
-                </form>
-            </div>
-
-            <!-- Formulario para Actualizar Peso/Altura -->
-            <div class="card">
-                <h2>6. Actualizar Datos Físicos (UPDATE interactivo)</h2>
-                <form id="formUpdateCliente">
-                    <div style="display:flex; gap:8px;">
-                        <input type="number" id="updId" placeholder="ID Cliente (ej. 1)" required>
-                        <input type="number" step="0.1" id="updPeso" placeholder="Nuevo Peso (kg)" required>
-                        <input type="number" step="0.01" id="updAltura" placeholder="Nueva Altura (m)" required>
+                    <div class="bio-stats">
+                        <div class="bio-pill">
+                            <span class="bio-label">Peso</span>
+                            <strong id="bioPeso">-- kg</strong>
+                        </div>
+                        <div class="bio-pill">
+                            <span class="bio-label">Altura</span>
+                            <strong id="bioAltura">-- m</strong>
+                        </div>
+                        <div class="bio-pill">
+                            <span class="bio-label">IMC</span>
+                            <strong id="bioIMC" class="imc-highlight">--</strong>
+                        </div>
+                        <div class="bio-pill">
+                            <span class="bio-label">Meta Diaria</span>
+                            <strong id="bioCalorias">-- kcal</strong>
+                        </div>
                     </div>
-                    <button type="submit" class="btn-update" style="width:100%; text-align:center;">Actualizar Físico (UPDATE)</button>
-                </form>
-            </div>
+                </section>
 
-            <!-- Panel de Consultas MongoDB Atlas (Etapa 2 - NoSQL) -->
-            <div class="card" style="border: 2px solid #27ae60; background: #fdfefe;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
-                    <h2 style="color:#27ae60; margin:0;">🍃 Consultas MongoDB Atlas (Etapa 2 - NoSQL)</h2>
-                    <span class="badge" style="background:#27ae60; color:white;">Atlas en la Nube</span>
+                <!-- Tus Pedidos Activos (Con PIN de Entrega) -->
+                <section class="seccion-pedidos">
+                    <div class="seccion-header">
+                        <div>
+                            <h3>📦 Mis Pedidos y Código PIN de Entrega</h3>
+                            <p>Entrega este código de 4 dígitos al repartidor cuando llegue a tu puerta</p>
+                        </div>
+                        <button class="btn btn-secondary btn-sm" onclick="cargarPedidosCliente()">↻ Actualizar Pedidos</button>
+                    </div>
+                    <div id="listaPedidosCliente" class="pedidos-grid">
+                        <!-- Render dinámico de pedidos -->
+                    </div>
+                </section>
+
+                <!-- Catálogo de Comidas y Transparencia -->
+                <section class="seccion-catalogo">
+                    <div class="seccion-header">
+                        <div>
+                            <h3>🍽️ Menú Saludable con Transparencia Total</h3>
+                            <p>Conoce calorías exactas, macronutrientes y origen de cada plato</p>
+                        </div>
+                        <div class="filtro-calorias">
+                            <label>Filtrar por Calorías (Operador $lte):</label>
+                            <select id="selectFiltroCalorias" onchange="aplicarFiltroCalorias()">
+                                <option value="todas">Todos los platillos</option>
+                                <option value="500">Ligeros (≤ 500 kcal)</option>
+                                <option value="400">Ultra Fit (≤ 400 kcal)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="gridPlatillos" class="platillos-grid">
+                        <!-- Render dinámico de platillos -->
+                    </div>
+                </section>
+            </div>
+        </main>
+
+        <!-- 2. VISTA RESTAURANTE / TIENDA -->
+        <main id="vistaRestaurante" class="vista-rol hidden">
+            <div class="container">
+                <div class="seccion-header">
+                    <div>
+                        <h3 id="tituloRestaurante">🏪 Panel de Restaurante y Cocina</h3>
+                        <p>Gestión de menú, transparencia nutricional y pedidos de clientes</p>
+                    </div>
+                    <span class="badge badge-success">Cocina Conectada a Atlas</span>
                 </div>
-                <p style="font-size:13px; color:#555; margin-top:0;">Operaciones MQL en tiempo real: modelos embebidos, sin JOINs y agregaciones.</p>
-                <div class="btn-grid">
-                    <button class="btn-select" style="background:#27ae60;" onclick="ejecutar('/api/mongo/usuarios', 'GET')">1. find() Usuarios (IMC embebido)</button>
-                    <button class="btn-select" style="background:#16a085;" onclick="ejecutar('/api/mongo/planes', 'GET')">2. find({ precio: { $gt: 20 } })</button>
-                    <button class="btn-join" style="background:#2980b9;" onclick="ejecutar('/api/mongo/pedidos-sin-join', 'GET')">3. Pedidos (¡Cero JOINs!)</button>
-                    <button class="btn-status" style="background:#8e44ad;" onclick="ejecutar('/api/mongo/estadisticas', 'GET')">4. aggregate([ $group, $avg ])</button>
-                    <button class="btn-insert" style="background:#d35400;" onclick="ejecutar('/api/mongo/pedidos', 'POST')">5. create() Nuevo Pedido (con PIN)</button>
-                    <button class="btn-update" style="background:#c0392b;" onclick="ejecutar('/api/mongo/usuarios/peso', 'PUT', { nuevoPeso: 73.5 })">6. updateOne() $set Peso/IMC</button>
+
+                <div class="grid-dos-columnas">
+                    <!-- Formulario para Crear Platillo Nuevo -->
+                    <div class="card">
+                        <h4>➕ Publicar Nuevo Platillo</h4>
+                        <p style="font-size:12px; color:#6b7280; margin-bottom:14px;">Registra un plato en MongoDB con desglose nutricional exacto.</p>
+                        <form id="formNuevoPlatillo">
+                            <div class="form-group">
+                                <label>Nombre del Platillo</label>
+                                <input type="text" id="platoNombre" placeholder="ej. Bowl Keto de Atún" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Descripción de Ingredientes</label>
+                                <input type="text" id="platoDescripcion" placeholder="Ingredientes limpios, aderezos sin azúcar..." required>
+                            </div>
+                            <div style="display:flex; gap:10px;">
+                                <div class="form-group" style="flex:1;">
+                                    <label>Precio ($ CLP)</label>
+                                    <input type="number" id="platoPrecio" placeholder="ej. 7500" required>
+                                </div>
+                                <div class="form-group" style="flex:1;">
+                                    <label>Calorías (kcal)</label>
+                                    <input type="number" id="platoCalorias" placeholder="ej. 450" required>
+                                </div>
+                            </div>
+                            <div style="display:flex; gap:8px;">
+                                <div class="form-group" style="flex:1;">
+                                    <label>Proteína (g)</label>
+                                    <input type="number" id="platoProteina" placeholder="35" required>
+                                </div>
+                                <div class="form-group" style="flex:1;">
+                                    <label>Carbos (g)</label>
+                                    <input type="number" id="platoCarbos" placeholder="20" required>
+                                </div>
+                                <div class="form-group" style="flex:1;">
+                                    <label>Grasas (g)</label>
+                                    <input type="number" id="platoGrasas" placeholder="12" required>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-block">Guardar Platillo en Atlas</button>
+                        </form>
+                    </div>
+
+                    <!-- Menú Publicado y Pedidos en Cocina -->
+                    <div class="card">
+                        <h4>Platillos Publicados en tu Menú</h4>
+                        <div id="platillosRestauranteList" class="lista-items">
+                            <!-- Render de platillos del restaurante -->
+                        </div>
+
+                        <h4 style="margin-top:24px;">Pedidos Recibidos</h4>
+                        <div id="pedidosCocinaList" class="lista-items">
+                            <!-- Render de pedidos -->
+                        </div>
+                    </div>
                 </div>
             </div>
+        </main>
 
-            <div class="card">
-                <h2>Panel de Consultas SQL (Etapa 1 - SQLite Relacional)</h2>
-                <div class="btn-grid">
-                    <button class="btn-select" onclick="ejecutar('/api/consultas/clientes', 'GET')">1. SELECT Clientes</button>
-                    <button class="btn-select" onclick="ejecutar('/api/consultas/planes', 'GET')">2. SELECT Planes (>20)</button>
-                    <button class="btn-select" onclick="ejecutar('/api/consultas/estadisticas', 'GET')">3. SELECT Stats (AVG/COUNT)</button>
-                    <button class="btn-insert" onclick="ejecutar('/api/consultas/pedidos', 'POST', { idCliente: 1, idPlan: 2, total: 59.99 })">5. INSERT Pedido</button>
-                    <button class="btn-update" onclick="ejecutar('/api/consultas/pedidos/estado', 'PUT', { idPedido: 1, nuevoEstado: 'En Reparto' })">7. UPDATE Estado Pedido</button>
-                    <button class="btn-join" onclick="ejecutar('/api/consultas/pedidos-detallados', 'GET')">8. INNER JOIN Pedido+Cliente+Plan</button>
-                    <button class="btn-join" onclick="ejecutar('/api/consultas/clientes-pedidos', 'GET')">9. LEFT JOIN Cliente con Pedidos</button>
-                    <button class="btn-delete" onclick="ejecutar('/api/consultas/pedidos/ultimo', 'DELETE')">10. DELETE Pedido Prueba</button>
-                    <button class="btn-alter" onclick="ejecutar('/api/consultas/alter-table', 'POST')">11. ALTER TABLE Add Telefono</button>
-                    <button class="btn-status" onclick="ejecutar('/api/consultas/crear-tabla-auditoria', 'POST')">12. CREATE TABLE Auditoria</button>
-                    <button class="btn-drop" onclick="ejecutar('/api/consultas/drop-tabla-auditoria', 'DELETE')">13. DROP TABLE Auditoria</button>
-                    <button class="btn-status" onclick="ejecutar('/api/consultas/estado', 'GET')">Resumen Base de Datos</button>
+        <!-- 3. VISTA REPARTIDOR (MOBILE-FIRST) -->
+        <main id="vistaRepartidor" class="vista-rol hidden">
+            <div class="mobile-simulator-wrapper">
+                <div class="smartphone-frame">
+                    <div class="smartphone-screen">
+                        
+                        <!-- Barra de estado simulada -->
+                        <div class="phone-status-bar">
+                            <span>09:41</span>
+                            <span>📶 5G 🔋 98%</span>
+                        </div>
+
+                        <!-- Header App Repartidor -->
+                        <div class="phone-app-header">
+                            <div>
+                                <small>App Repartidor Mobile-First</small>
+                                <h4>🛵 Kalo Delivery</h4>
+                            </div>
+                            <span class="status-dot-online" id="repartidorEstadoPill">Online</span>
+                        </div>
+
+                        <!-- Tarjeta de Pedido y Aceptación -->
+                        <div class="phone-content">
+                            <div class="order-pickup-card">
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <span class="badge-mini" id="repartidorPedidoBadge">En Preparación</span>
+                                    <strong id="repartidorCodPedido" style="font-size:13px;">KALO-2026-0001</strong>
+                                </div>
+                                <h5 id="repartidorClienteNombre" style="margin-top:8px;">Cliente: Andrea Gómez</h5>
+                                <p id="repartidorDireccion">📍 Av. Libertad 450, Viña del Mar</p>
+                                <p id="repartidorTotalPedido" style="font-weight:600; color:#059669;">Total: $8.500</p>
+                                
+                                <!-- Botón Aceptar Pedido -->
+                                <button id="btnAceptarReparto" class="btn btn-secondary btn-block btn-sm" style="margin-top:10px;" onclick="aceptarPedidoReparto()">
+                                    🛵 Aceptar Reparto
+                                </button>
+                                <div class="order-divider"></div>
+                                <span class="order-alert">⚠️ Solicita el PIN de 4 dígitos al cliente para validar la entrega</span>
+                            </div>
+
+                            <!-- Teclado Numérico Interactivo (PIN Pad) -->
+                            <div class="pin-validation-box">
+                                <label>Ingresar PIN del Cliente</label>
+                                <div class="pin-display">
+                                    <input type="text" id="inputPinPantalla" maxlength="4" placeholder="----" readonly>
+                                </div>
+
+                                <div class="keypad-grid">
+                                    <button type="button" class="key-btn" onclick="teclearPin('1')">1</button>
+                                    <button type="button" class="key-btn" onclick="teclearPin('2')">2</button>
+                                    <button type="button" class="key-btn" onclick="teclearPin('3')">3</button>
+                                    <button type="button" class="key-btn" onclick="teclearPin('4')">4</button>
+                                    <button type="button" class="key-btn" onclick="teclearPin('5')">5</button>
+                                    <button type="button" class="key-btn" onclick="teclearPin('6')">6</button>
+                                    <button type="button" class="key-btn" onclick="teclearPin('7')">7</button>
+                                    <button type="button" class="key-btn" onclick="teclearPin('8')">8</button>
+                                    <button type="button" class="key-btn" onclick="teclearPin('9')">9</button>
+                                    <button type="button" class="key-btn key-action" onclick="borrarPin()">⌫</button>
+                                    <button type="button" class="key-btn" onclick="teclearPin('0')">0</button>
+                                    <button type="button" class="key-btn key-clear" onclick="limpiarPin()">C</button>
+                                </div>
+
+                                <button id="btnValidarPin" class="btn btn-success btn-block" onclick="enviarValidacionPin()">
+                                    ✓ Confirmar Entrega
+                                </button>
+                            </div>
+                        </div>
+
+                    </div>
                 </div>
             </div>
+        </main>
 
-            <div class="card">
-                <h2>Prueba de Login (/api/login)</h2>
-                <form id="loginForm">
-                    <input type="email" id="correo" value="andrea@mail.com" required>
-                    <input type="password" id="password" value="secreta123" required>
-                    <button type="submit" class="btn-login">Iniciar Sesión</button>
-                </form>
-                <p id="mensajeLogin" style="margin-top:10px; font-weight:bold;"></p>
+    </div>
+
+    <!-- MODAL CARRITO DE COMPRAS -->
+    <div id="modalCarrito" class="modal hidden">
+        <div class="modal-content" style="max-width:520px;">
+            <div class="modal-header">
+                <h3>🛒 Tu Carrito Nutricional Kalo</h3>
+                <button class="btn-close" onclick="cerrarModalCarrito()">&times;</button>
             </div>
-        </div>
-
-        <div>
-            <div class="card">
-                <h2>Resultado de la Consulta en Tiempo Real</h2>
-                <div class="sql-viewer" id="sqlViewer">
-                    Selecciona un botón de la izquierda para ejecutar la consulta SQL.
+            <div class="modal-body">
+                <div id="itemsCarritoLista" class="carrito-items-lista">
+                    <!-- Render de items agregados -->
                 </div>
-                <pre id="outputJSON">// Respuesta JSON aparecerá aquí...</pre>
+
+                <div class="carrito-resumen-box">
+                    <div class="resumen-linea">
+                        <span>Calorías Totales Acumuladas:</span>
+                        <strong id="carritoTotalKcal" style="color:#b91c1c;">0 kcal</strong>
+                    </div>
+                    <div class="resumen-linea" style="font-size:17px; margin-top:8px;">
+                        <span>Total a Pagar:</span>
+                        <strong id="carritoTotalPrecio" style="color:#059669;">$0</strong>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary btn-block" style="margin-top:16px; padding:12px;" onclick="confirmarCompraCarrito()">
+                    💳 Confirmar y Pagar Pedido
+                </button>
             </div>
         </div>
     </div>
-</div>
 
-<script src="app.js"></script>
+    <!-- MODAL DE DEMOSTRACIÓN NoSQL (Requisito 20 pts de Consultas para el Profesor) -->
+    <div id="modalNoSQL" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>🍃 Consola de Consultas MongoDB Atlas (MQL)</h3>
+                <button class="btn-close" onclick="cerrarModalNoSQL()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Ejecuta en tiempo real los requerimientos NoSQL de la rúbrica sobre la base de datos Atlas:</p>
+                
+                <div class="nosql-actions-grid">
+                    <button class="btn-mql btn-mql-lookup" onclick="ejecutarConsultaMQL('/api/mongo/platillos-con-restaurante', 'GET')">
+                        1. $lookup (JOIN NoSQL) Platillos ↔ Restaurante
+                    </button>
+                    <button class="btn-mql btn-mql-group" onclick="ejecutarConsultaMQL('/api/mongo/estadisticas', 'GET')">
+                        2. $group (GROUP BY NoSQL) Stats Biométricas
+                    </button>
+                    <button class="btn-mql btn-mql-filter" onclick="ejecutarConsultaMQL('/api/mongo/platillos-fit?maxCalorias=500', 'GET')">
+                        3. Operador $lte (Filtro Calórico ≤ 500 kcal)
+                    </button>
+                    <button class="btn-mql btn-mql-find" onclick="ejecutarConsultaMQL('/api/mongo/pedidos', 'GET')">
+                        4. find() Pedidos Activos (con PIN)
+                    </button>
+                </div>
+
+                <div class="console-output">
+                    <div class="console-header">
+                        <span id="mqlOperacionTag" class="console-tag">Operación: Ninguna</span>
+                        <span id="mqlStatusTag" class="console-status">Estado: Listo</span>
+                    </div>
+                    <div class="mql-query-box">
+                        <strong>Consulta MQL Ejecutada:</strong>
+                        <pre id="mqlQueryDisplay">// Presiona una de las consultas de arriba para ver el código MQL y resultado...</pre>
+                    </div>
+                    <div class="mql-result-box">
+                        <strong>Respuesta JSON desde MongoDB Atlas:</strong>
+                        <pre id="mqlJsonDisplay">{ "mensaje": "Esperando ejecución..." }</pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
 </body>
 </html>

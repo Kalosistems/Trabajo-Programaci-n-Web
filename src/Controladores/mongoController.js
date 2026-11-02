@@ -18,7 +18,6 @@ const Platillo = require('../Modelos/mongo/Platillo');
 const Pedido = require('../Modelos/mongo/Pedido');
 const { mongoose } = require('../config/mongo');
 
-// Validador de conexión a Atlas para responder con error amigable si se cae la red
 function verificarConexion(res) {
     if (mongoose.connection.readyState !== 1) {
         res.status(503).json({
@@ -30,7 +29,7 @@ function verificarConexion(res) {
     return true;
 }
 
-// 1. Catálogo General: Listar todos los platillos con calorías y macronutrientes
+// 1. Catálogo General de Platillos
 exports.obtenerPlatillos = async (req, res) => {
     if (!verificarConexion(res)) return;
     try {
@@ -48,7 +47,7 @@ exports.obtenerPlatillos = async (req, res) => {
     }
 };
 
-// 2. OPERADORES NoSQL ($lte): Filtrar platillos ligeros (calorías <= 500 kcal)
+// 2. OPERADORES NoSQL ($lte): Filtrar platillos ligeros
 exports.obtenerPlatillosLigeros = async (req, res) => {
     if (!verificarConexion(res)) return;
     try {
@@ -71,7 +70,53 @@ exports.obtenerPlatillosLigeros = async (req, res) => {
     }
 };
 
-// 3. JOIN NoSQL ($lookup): Cruzar Platillos con su Restaurante asociado
+// 3. CREAR NUEVO PLATILLO (Rol Restaurante)
+exports.crearPlatillo = async (req, res) => {
+    if (!verificarConexion(res)) return;
+    try {
+        const { nombre, descripcion, precio, calorias, proteinas, carbos, grasas, indice_transparencia, restaurante_id } = req.body;
+
+        if (!nombre || !precio || !calorias) {
+            return res.status(400).json({
+                exito: false,
+                mensaje: 'El nombre, precio y calorías del platillo son obligatorios.'
+            });
+        }
+
+        // Si no viene restaurante_id, asignamos el primer restaurante disponible
+        let idRest = restaurante_id;
+        if (!idRest) {
+            const primerRest = await Restaurante.findOne();
+            idRest = primerRest ? primerRest._id : null;
+        }
+
+        const nuevoPlatillo = await Platillo.create({
+            nombre: nombre.trim(),
+            descripcion: descripcion ? descripcion.trim() : 'Plato balanceado y nutritivo Kalo',
+            precio: parseFloat(precio),
+            calorias: parseInt(calorias),
+            macronutrientes: {
+                proteinas_g: parseFloat(proteinas) || 25,
+                carbohidratos_g: parseFloat(carbos) || 35,
+                grasas_g: parseFloat(grasas) || 10
+            },
+            indice_transparencia: parseInt(indice_transparencia) || 95,
+            restaurante_id: idRest
+        });
+
+        res.status(201).json({
+            exito: true,
+            mensaje: '¡Platillo registrado y publicado exitosamente en el catálogo de Kalo!',
+            operacion: 'create()',
+            consultaMQL: `Platillo.create({ nombre: "${nombre}", calorias: ${calorias}, precio: ${precio}, ... })`,
+            platillo: nuevoPlatillo
+        });
+    } catch (error) {
+        res.status(500).json({ exito: false, mensaje: 'Error al registrar el platillo', detalle: error.message });
+    }
+};
+
+// 4. JOIN NoSQL ($lookup): Cruzar Platillos con su Restaurante
 exports.obtenerPlatillosConRestaurante = async (req, res) => {
     if (!verificarConexion(res)) return;
     try {
@@ -116,7 +161,7 @@ exports.obtenerPlatillosConRestaurante = async (req, res) => {
     }
 };
 
-// 4. GROUP BY NoSQL ($group): Estadísticas biométricas agrupadas por género
+// 5. GROUP BY NoSQL ($group): Estadísticas biométricas por género
 exports.obtenerEstadisticasBiometricas = async (req, res) => {
     if (!verificarConexion(res)) return;
     try {
@@ -158,7 +203,7 @@ exports.obtenerEstadisticasBiometricas = async (req, res) => {
     }
 };
 
-// 5. Listar Pedidos activos
+// 6. Listar Pedidos
 exports.obtenerPedidos = async (req, res) => {
     if (!verificarConexion(res)) return;
     try {
@@ -176,16 +221,132 @@ exports.obtenerPedidos = async (req, res) => {
     }
 };
 
-// 6. VALIDACIÓN DE PIN (Módulo Repartidor Mobile-First): Cambia estado a 'Entregado'
+// 7. CREAR PEDIDO DESDE CARRITO DE COMPRAS
+exports.crearPedido = async (req, res) => {
+    if (!verificarConexion(res)) return;
+    try {
+        const { usuario_id, items, total } = req.body;
+
+        const usuario = usuario_id 
+            ? await Usuario.findById(usuario_id) 
+            : await Usuario.findOne();
+
+        if (!usuario) {
+            return res.status(404).json({ exito: false, mensaje: 'No se encontró el usuario que realiza el pedido.' });
+        }
+
+        // Si viene desde el carrito con múltiples items
+        let detallesFormateados = [];
+        let totalCalculado = 0;
+
+        if (Array.isArray(items) && items.length > 0) {
+            detallesFormateados = items.map(it => {
+                const sub = it.precio * (it.cantidad || 1);
+                totalCalculado += sub;
+                return {
+                    platillo_id: it.platillo_id,
+                    nombre_platillo: it.nombre,
+                    cantidad: it.cantidad || 1,
+                    precio_unitario: it.precio,
+                    subtotal: sub
+                };
+            });
+        } else {
+            // Fallback para compra directa
+            const platillo = await Platillo.findOne();
+            totalCalculado = platillo ? platillo.precio : 8500;
+            detallesFormateados = [{
+                platillo_id: platillo ? platillo._id : new mongoose.Types.ObjectId(),
+                nombre_platillo: platillo ? platillo.nombre : 'Platillo Kalo',
+                cantidad: 1,
+                precio_unitario: totalCalculado,
+                subtotal: totalCalculado
+            }];
+        }
+
+        const codigoRandom = `KALO-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+        const pinRandom = String(Math.floor(1000 + Math.random() * 9000));
+
+        const primerRestaurante = await Restaurante.findOne();
+
+        const nuevoPedido = await Pedido.create({
+            codigo_pedido: codigoRandom,
+            fecha_pedido: new Date(),
+            estado: 'En Preparación', // Listo para que el repartidor lo acepte
+            pin_seguridad: pinRandom,
+            calificacion_transp: 5,
+            cliente: {
+                usuario_id: usuario._id,
+                nombre: usuario.nombre,
+                correo: usuario.correo,
+                telefono: usuario.telefono
+            },
+            restaurante_id: primerRestaurante ? primerRestaurante._id : null,
+            detalles: detallesFormateados,
+            total: total || totalCalculado
+        });
+
+        res.status(201).json({
+            exito: true,
+            mensaje: `¡Pedido ${codigoRandom} creado exitosamente! Tu PIN de entrega es: ${pinRandom}`,
+            operacion: 'create()',
+            consultaMQL: `Pedido.create({ codigo_pedido: "${codigoRandom}", pin_seguridad: "${pinRandom}", items: ${detallesFormateados.length} })`,
+            pedido: nuevoPedido
+        });
+    } catch (error) {
+        res.status(500).json({ exito: false, mensaje: 'Error al registrar el pedido', detalle: error.message });
+    }
+};
+
+// 8. ACEPTAR PEDIDO (Rol Repartidor) -> Pasa de 'En Preparación' a 'En Reparto'
+exports.aceptarPedido = async (req, res) => {
+    if (!verificarConexion(res)) return;
+    const { codigo_pedido, repartidor_id } = req.body;
+
+    if (!codigo_pedido) {
+        return res.status(400).json({ exito: false, mensaje: 'Debes proporcionar el código de pedido.' });
+    }
+
+    try {
+        const pedido = await Pedido.findOne({ codigo_pedido });
+        if (!pedido) {
+            return res.status(404).json({ exito: false, mensaje: `Pedido ${codigo_pedido} no encontrado.` });
+        }
+
+        if (pedido.estado !== 'En Preparación') {
+            return res.status(400).json({
+                exito: false,
+                mensaje: `El pedido no puede ser aceptado porque su estado actual es: ${pedido.estado}`
+            });
+        }
+
+        pedido.estado = 'En Camino';
+        if (repartidor_id) {
+            pedido.repartidor_id = repartidor_id;
+        }
+        await pedido.save();
+
+        res.status(200).json({
+            exito: true,
+            mensaje: `¡Has aceptado el pedido ${codigo_pedido}! Ahora está en reparto hacia el cliente.`,
+            operacion: 'updateOne() con $set',
+            consultaMQL: `Pedido.updateOne({ codigo_pedido: "${codigo_pedido}" }, { $set: { estado: "En Camino" } })`,
+            pedido
+        });
+    } catch (error) {
+        res.status(500).json({ exito: false, mensaje: 'Error al aceptar el pedido', detalle: error.message });
+    }
+};
+
+// 9. VALIDACIÓN DE PIN (Rol Repartidor Mobile-First) -> Pasa a 'Entregado'
 exports.validarPinEntrega = async (req, res) => {
     if (!verificarConexion(res)) return;
     const { codigo_pedido, pin_ingresado } = req.body;
 
-    // Validación de entrada
     if (!codigo_pedido || !pin_ingresado) {
         return res.status(400).json({
             exito: false,
-            mensaje: 'Debes proporcionar tanto el código de pedido como el PIN de 4 dígitos.'
+            mensaje: 'Debes proporcionar el código de pedido y el PIN de 4 dígitos.'
         });
     }
 
@@ -206,15 +367,13 @@ exports.validarPinEntrega = async (req, res) => {
             });
         }
 
-        // Comparación del PIN
         if (pedido.pin_seguridad !== pin_ingresado.trim()) {
             return res.status(401).json({
                 exito: false,
-                mensaje: 'PIN de entrega incorrecto. El pedido no puede ser entregado.'
+                mensaje: 'PIN de entrega incorrecto. Solicita al cliente su código correcto.'
             });
         }
 
-        // Si el PIN coincide, actualizamos el estado con $set
         pedido.estado = 'Entregado';
         await pedido.save();
 
@@ -227,68 +386,5 @@ exports.validarPinEntrega = async (req, res) => {
         });
     } catch (error) {
         res.status(500).json({ exito: false, mensaje: 'Error al validar el PIN de entrega', detalle: error.message });
-    }
-};
-
-// 7. Crear un nuevo pedido desde el frontend
-exports.crearPedido = async (req, res) => {
-    if (!verificarConexion(res)) return;
-    try {
-        const { usuario_id, platillo_id, cantidad } = req.body;
-
-        const usuario = usuario_id 
-            ? await Usuario.findById(usuario_id) 
-            : await Usuario.findOne();
-
-        const platillo = platillo_id 
-            ? await Platillo.findById(platillo_id) 
-            : await Platillo.findOne();
-
-        if (!usuario || !platillo) {
-            return res.status(404).json({
-                exito: false,
-                mensaje: 'No se encontró el usuario o platillo seleccionado.'
-            });
-        }
-
-        const cant = parseInt(cantidad) || 1;
-        const totalCalculado = platillo.precio * cant;
-        const codigoRandom = `KALO-2026-${Math.floor(1000 + Math.random() * 9000)}`;
-        const pinRandom = String(Math.floor(1000 + Math.random() * 9000));
-
-        const nuevoPedido = await Pedido.create({
-            codigo_pedido: codigoRandom,
-            fecha_pedido: new Date(),
-            estado: 'En Preparación',
-            pin_seguridad: pinRandom,
-            calificacion_transp: 5,
-            cliente: {
-                usuario_id: usuario._id,
-                nombre: usuario.nombre,
-                correo: usuario.correo,
-                telefono: usuario.telefono
-            },
-            restaurante_id: platillo.restaurante_id,
-            detalles: [
-                {
-                    platillo_id: platillo._id,
-                    nombre_platillo: platillo.nombre,
-                    cantidad: cant,
-                    precio_unitario: platillo.precio,
-                    subtotal: totalCalculado
-                }
-            ],
-            total: totalCalculado
-        });
-
-        res.status(201).json({
-            exito: true,
-            mensaje: '¡Pedido creado exitosamente con PIN de seguridad generado!',
-            operacion: 'create()',
-            consultaMQL: `Pedido.create({ codigo_pedido: "${codigoRandom}", pin_seguridad: "${pinRandom}", ... })`,
-            pedido: nuevoPedido
-        });
-    } catch (error) {
-        res.status(500).json({ exito: false, mensaje: 'Error al registrar el pedido', detalle: error.message });
     }
 };
