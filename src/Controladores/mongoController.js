@@ -32,6 +32,7 @@ function calcularIndiceTransparencia(datos) {
     if (datos.peso_porcion && parseFloat(datos.peso_porcion) > 0) porcentaje += 10;
     if (datos.alergenos && datos.alergenos.trim().length > 3) porcentaje += 5;
     if (datos.ingredientes_limpios === true || datos.ingredientes_limpios === 'true') porcentaje += 5;
+    if (Array.isArray(datos.ingredientes) && datos.ingredientes.length > 0) porcentaje += 10;
 
     return Math.min(porcentaje, 100);
 }
@@ -40,13 +41,29 @@ function calcularIndiceTransparencia(datos) {
 exports.obtenerPlatillos = async (req, res) => {
     if (!verificarConexion(res)) return;
     try {
-        const platillos = await Platillo.find({ activo: true }).sort({ precio: 1 });
+        const { categoria, busqueda, maxCalorias, minProteina } = req.query;
+        let filtro = { activo: true };
+
+        if (categoria && categoria !== 'todas') {
+            filtro.categoria = categoria;
+        }
+        if (busqueda) {
+            filtro.nombre = { $regex: busqueda, $options: 'i' };
+        }
+        if (maxCalorias) {
+            filtro.calorias = { $lte: parseInt(maxCalorias) };
+        }
+        if (minProteina) {
+            filtro['macronutrientes.proteinas_g'] = { $gte: parseFloat(minProteina) };
+        }
+
+        const platillos = await Platillo.find(filtro).sort({ indice_transparencia: -1, precio: 1 });
         res.status(200).json({
             exito: true,
             total: platillos.length,
             operacion: 'find()',
             descripcion: 'Listado completo de platillos con información calórica y macronutrientes',
-            consultaMQL: 'Platillo.find({ activo: true }).sort({ precio: 1 })',
+            consultaMQL: 'Platillo.find({ activo: true }).sort({ indice_transparencia: -1 })',
             datos: platillos
         });
     } catch (error) {
@@ -83,8 +100,10 @@ exports.crearPlatillo = async (req, res) => {
     try {
         const { 
             nombre, descripcion, precio, calorias, 
+            categoria, imagen_url,
             proteinas, carbos, grasas, 
             peso_porcion, alergenos, ingredientes_limpios,
+            ingredientes,
             restaurante_id 
         } = req.body;
 
@@ -103,12 +122,14 @@ exports.crearPlatillo = async (req, res) => {
 
         // Cálculo dinámico del porcentaje de transparencia
         const indiceCalculado = calcularIndiceTransparencia({
-            proteinas, carbos, grasas, peso_porcion, alergenos, ingredientes_limpios
+            proteinas, carbos, grasas, peso_porcion, alergenos, ingredientes_limpios, ingredientes
         });
 
         const nuevoPlatillo = await Platillo.create({
             nombre: nombre.trim(),
             descripcion: descripcion ? descripcion.trim() : 'Plato nutritivo Kalo',
+            categoria: categoria || 'Almuerzo',
+            imagen_url: imagen_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80',
             precio: parseFloat(precio),
             calorias: parseInt(calorias),
             macronutrientes: {
@@ -116,7 +137,8 @@ exports.crearPlatillo = async (req, res) => {
                 carbohidratos_g: parseFloat(carbos) || 0,
                 grasas_g: parseFloat(grasas) || 0
             },
-            peso_porcion_g: peso_porcion ? parseFloat(peso_porcion) : null,
+            ingredientes: Array.isArray(ingredientes) ? ingredientes : [],
+            peso_porcion_g: peso_porcion ? parseFloat(peso_porcion) : 350,
             alergenos: alergenos ? alergenos.trim() : 'No declarados',
             ingredientes_limpios: Boolean(ingredientes_limpios),
             indice_transparencia: indiceCalculado,
@@ -155,12 +177,16 @@ exports.obtenerPlatillosConRestaurante = async (req, res) => {
                 $project: {
                     nombre: 1,
                     descripcion: 1,
+                    categoria: 1,
+                    imagen_url: 1,
                     precio: 1,
                     calorias: 1,
                     indice_transparencia: 1,
                     peso_porcion_g: 1,
                     alergenos: 1,
                     ingredientes_limpios: 1,
+                    macronutrientes: 1,
+                    ingredientes: 1,
                     'restaurante.nombre': 1,
                     'restaurante.especialidad': 1,
                     'restaurante.direccion': 1,
@@ -291,7 +317,7 @@ exports.crearPedido = async (req, res) => {
         const nuevoPedido = await Pedido.create({
             codigo_pedido: codigoRandom,
             fecha_pedido: new Date(),
-            estado: 'En Preparación',
+            estado: 'En Preparación', // Estado inicial tras pagar
             pin_seguridad: pinRandom,
             calificacion_transp: 5,
             cliente: {
@@ -302,7 +328,7 @@ exports.crearPedido = async (req, res) => {
             },
             restaurante_id: primerRestaurante ? primerRestaurante._id : null,
             detalles: detallesFormateados,
-            total: total || totalCalculado || 5000
+            total: total || (totalCalculado + 1490) || 10480
         });
 
         res.status(201).json({
@@ -322,7 +348,37 @@ exports.crearPedido = async (req, res) => {
     }
 };
 
-// 8. Aceptar Pedido (Repartidor)
+// 8. Actualizar Estado de Pedido (Kanban Restaurante / Repartidor)
+exports.actualizarEstadoPedido = async (req, res) => {
+    if (!verificarConexion(res)) return;
+    const { codigo_pedido, nuevo_estado } = req.body;
+
+    if (!codigo_pedido || !nuevo_estado) {
+        return res.status(400).json({ exito: false, mensaje: 'Faltan parámetros requeridos.' });
+    }
+
+    try {
+        const pedido = await Pedido.findOne({ codigo_pedido });
+        if (!pedido) {
+            return res.status(404).json({ exito: false, mensaje: `Pedido ${codigo_pedido} no encontrado.` });
+        }
+
+        pedido.estado = nuevo_estado;
+        await pedido.save();
+
+        res.status(200).json({
+            exito: true,
+            mensaje: `El estado del pedido ${codigo_pedido} ha cambiado a: ${nuevo_estado}`,
+            operacion: 'updateOne() con $set',
+            consultaMQL: `Pedido.updateOne({ codigo_pedido: "${codigo_pedido}" }, { $set: { estado: "${nuevo_estado}" } })`,
+            pedido
+        });
+    } catch (error) {
+        res.status(500).json({ exito: false, mensaje: 'Error al actualizar pedido', detalle: error.message });
+    }
+};
+
+// 9. Aceptar Pedido (Repartidor)
 exports.aceptarPedido = async (req, res) => {
     if (!verificarConexion(res)) return;
     const { codigo_pedido, repartidor_id } = req.body;
@@ -353,7 +409,7 @@ exports.aceptarPedido = async (req, res) => {
     }
 };
 
-// 9. Validar PIN (Repartidor Mobile-First)
+// 10. Validar PIN (Repartidor Mobile-First)
 exports.validarPinEntrega = async (req, res) => {
     if (!verificarConexion(res)) return;
     const { codigo_pedido, pin_ingresado } = req.body;
@@ -392,5 +448,100 @@ exports.validarPinEntrega = async (req, res) => {
         });
     } catch (error) {
         res.status(500).json({ exito: false, mensaje: 'Error al validar el PIN', detalle: error.message });
+    }
+};
+
+// 11. EVALUAR PEDIDO (Expectativa vs Realidad - Transparencia)
+exports.evaluarPedido = async (req, res) => {
+    if (!verificarConexion(res)) return;
+    try {
+        const { codigo_pedido, similitud_foto, gramaje_porcion, velocidad_prep, calificacion_general, comentario } = req.body;
+
+        const pedido = await Pedido.findOne({ codigo_pedido });
+        if (!pedido) {
+            return res.status(404).json({ exito: false, mensaje: 'Pedido no encontrado' });
+        }
+
+        pedido.evaluacion = {
+            similitud_foto: parseInt(similitud_foto) || 5,
+            gramaje_porcion: parseInt(gramaje_porcion) || 5,
+            velocidad_prep: parseInt(velocidad_prep) || 5,
+            calificacion_general: parseInt(calificacion_general) || 5,
+            comentario: comentario ? comentario.trim() : '',
+            fecha_evaluacion: new Date()
+        };
+        await pedido.save();
+
+        res.status(200).json({
+            exito: true,
+            mensaje: '¡Gracias! Tu evaluación fue registrada exitosamente y actualizó el Índice de Transparencia.',
+            operacion: 'updateOne() con subdocumento evaluacion',
+            consultaMQL: `Pedido.updateOne({ codigo_pedido: "${codigo_pedido}" }, { $set: { evaluacion: ... } })`,
+            pedido
+        });
+    } catch (error) {
+        res.status(500).json({ exito: false, mensaje: 'Error al guardar la evaluación', detalle: error.message });
+    }
+};
+
+// 12. Listar Planes Nutricionales
+exports.obtenerPlanes = async (req, res) => {
+    if (!verificarConexion(res)) return;
+    try {
+        const planes = await PlanNutricional.find({ activo: true });
+        res.status(200).json({
+            exito: true,
+            datos: planes
+        });
+    } catch (error) {
+        res.status(500).json({ exito: false, mensaje: 'Error al obtener planes', detalle: error.message });
+    }
+};
+
+// 13. Actualizar Perfil Biométrico
+exports.actualizarPerfilBiometrico = async (req, res) => {
+    if (!verificarConexion(res)) return;
+    try {
+        const { usuario_id, peso, altura, edad, genero } = req.body;
+        const usuario = await Usuario.findById(usuario_id);
+        if (!usuario) {
+            return res.status(404).json({ exito: false, mensaje: 'Usuario no encontrado' });
+        }
+
+        const pesoKg = parseFloat(peso) || usuario.perfil_biometrico.peso_kg;
+        const alturaM = parseFloat(altura) || usuario.perfil_biometrico.altura_m;
+        const imcCalc = parseFloat((pesoKg / (alturaM * alturaM)).toFixed(1));
+
+        usuario.perfil_biometrico.peso_kg = pesoKg;
+        usuario.perfil_biometrico.altura_m = alturaM;
+        if (edad) usuario.perfil_biometrico.edad = parseInt(edad);
+        if (genero) usuario.perfil_biometrico.genero = genero;
+        usuario.perfil_biometrico.imc = imcCalc;
+
+        await usuario.save();
+        res.status(200).json({
+            exito: true,
+            mensaje: 'Perfil biométrico actualizado exitosamente.',
+            usuario
+        });
+    } catch (error) {
+        res.status(500).json({ exito: false, mensaje: 'Error al actualizar datos biométricos', detalle: error.message });
+    }
+};
+
+// 14. Eliminar Datos de Salud (Ley 21.713 / GDPR)
+exports.eliminarUsuario = async (req, res) => {
+    if (!verificarConexion(res)) return;
+    try {
+        const { usuario_id } = req.params;
+        await Usuario.findByIdAndDelete(usuario_id);
+        await Pedido.deleteMany({ 'cliente.usuario_id': usuario_id });
+
+        res.status(200).json({
+            exito: true,
+            mensaje: 'Tus datos de salud y cuenta han sido eliminados permanentemente.'
+        });
+    } catch (error) {
+        res.status(500).json({ exito: false, mensaje: 'Error al eliminar datos', detalle: error.message });
     }
 };

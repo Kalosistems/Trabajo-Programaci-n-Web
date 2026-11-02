@@ -3,363 +3,1494 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kalo - Nutrición y Delivery Transparente</title>
+    <title>Kalo - Comida Rápida Saludable, 100% Transparente</title>
+    <!-- Fuentes oficiales Kalo: Plus Jakarta Sans / Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
 
-    <!-- NOTIFICACIÓN GLOBAL (Toast) -->
+    <!-- NOTIFICACIONES TOAST GLOBALES -->
     <div id="toast" class="toast hidden"></div>
 
-    <!-- 0. PANTALLA DE LOGIN INICIAL -->
-    <section id="pantallaLogin" class="pantalla-login">
-        <div class="login-card">
-            <div class="brand">
-                <span class="brand-badge">Etapa 2 · NoSQL MongoDB Atlas</span>
-                <h1>🥗 Kalo</h1>
-                <p>Plataforma de Nutrición Transparente y Delivery Seguro</p>
-            </div>
+    <!-- BARRA FLOTANTE DE CONTROL DE DEMO (Para testing y evaluación) -->
+    <header class="demo-top-bar">
+        <div class="demo-brand">
+            <span class="logo-text">kalo<span class="dot-orange">•</span></span>
+            <span class="demo-tag">Etapa 2 · NoSQL Atlas</span>
+        </div>
+        <div class="demo-actions">
+            <button class="btn-demo" onclick="activarDemoCliente()">👤 Cliente (Andrea)</button>
+            <button class="btn-demo" onclick="activarDemoRestaurante()">🏪 Restaurante (Verde Vivo)</button>
+            <button class="btn-demo" onclick="activarDemoRepartidor()">🛵 Repartidor (Carlos)</button>
+            <button class="btn-demo btn-demo-mql" onclick="abrirModalNoSQL()">🍃 Consola NoSQL (Docente)</button>
+            <button class="btn-demo btn-demo-reset" onclick="mostrarPantallaOnboarding('bienvenida')">↺ Reiniciar Flujo</button>
+        </div>
+    </header>
 
-            <form id="formLogin">
-                <div class="form-group">
-                    <label for="loginCorreo">Correo Electrónico</label>
-                    <input type="email" id="loginCorreo" placeholder="ejemplo@kalo.cl" required>
-                </div>
-                <div class="form-group">
-                    <label for="loginPassword">Contraseña</label>
-                    <input type="password" id="loginPassword" placeholder="••••••••" required>
-                </div>
-                <button type="submit" class="btn btn-primary btn-block">Iniciar Sesión</button>
-            </form>
+    <!-- ==============================================================
+         1. CONTENEDOR ONBOARDING & AUTENTICACIÓN (IMAGEN 1)
+         ============================================================== -->
+    <div id="seccionOnboarding" class="contenedor-onboarding">
+        <div class="smartphone-frame">
+            <div class="smartphone-screen">
 
-            <div class="login-demo-bar">
-                <p class="demo-title">Accesos Rápidos de Prueba (Presentación):</p>
-                <div class="demo-buttons">
-                    <button type="button" class="btn-demo btn-demo-cliente" onclick="autocompletarLogin('andrea@mail.com', 'secreta123')">
-                        👤 Rol Cliente (Andrea Gómez)
-                    </button>
-                    <button type="button" class="btn-demo btn-demo-restaurante" onclick="autocompletarLogin('contacto@greenbowl.cl', 'restaurante123')">
-                        🏪 Rol Restaurante (Green Bowl)
-                    </button>
-                    <button type="button" class="btn-demo btn-demo-repartidor" onclick="autocompletarLogin('carlos.reparto@kalo.cl', 'repartidor123')">
-                        🛵 Rol Repartidor Mobile-First (Carlos)
-                    </button>
+                <!-- 1.1 PANTALLA: BIENVENIDA -->
+                <div id="pantallaBienvenida" class="screen-flow">
+                    <div class="flow-header-simple">
+                        <span class="logo-text-large">kalo<span class="dot-orange">•</span></span>
+                    </div>
+                    <div class="welcome-hero-image-wrap">
+                        <img src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=700&q=80" alt="Plato saludable Kalo" class="welcome-hero-img">
+                    </div>
+                    <div class="welcome-content">
+                        <h2>Comida rápida saludable, 100% transparente</h2>
+                        <p>Elige con toda la información, disfruta a tu manera.</p>
+                        
+                        <div class="welcome-buttons">
+                            <button class="btn btn-primary btn-block" onclick="mostrarPantallaOnboarding('login')">Iniciar sesión</button>
+                            <button class="btn btn-outline btn-block" onclick="mostrarPantallaOnboarding('registro1')">Crear cuenta</button>
+                        </div>
+                        <span class="welcome-footer-tag">Comer bien, saber qué comes.</span>
+                    </div>
                 </div>
+
+                <!-- 1.2 PANTALLA: INICIAR SESIÓN -->
+                <div id="pantallaLogin" class="screen-flow hidden">
+                    <div class="flow-nav-top">
+                        <button class="btn-icon-back" onclick="mostrarPantallaOnboarding('bienvenida')">←</button>
+                        <span class="logo-text">kalo<span class="dot-orange">•</span></span>
+                        <span style="width:24px;"></span>
+                    </div>
+
+                    <div class="flow-body">
+                        <h2>Iniciar sesión</h2>
+                        <p class="flow-subtitle">Qué bueno tenerte de vuelta.</p>
+
+                        <!-- Mensaje de Error de Inicio de Sesión (Mockup 1.3) -->
+                        <div id="loginErrorAlert" class="alert-error hidden">
+                            <span class="icon-alert">⚠</span> Correo o contraseña incorrectos
+                        </div>
+
+                        <form id="formLogin" onsubmit="procesarLogin(event); return false;">
+                            <div class="form-group">
+                                <label for="loginCorreo">Correo electrónico</label>
+                                <div class="input-wrap">
+                                    <input type="email" id="loginCorreo" placeholder="andrea@mail.com" value="andrea@mail.com" required>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="loginPassword">Contraseña</label>
+                                <div class="input-wrap input-password-wrap">
+                                    <input type="password" id="loginPassword" placeholder="••••••••" value="secreta123" required>
+                                    <button type="button" class="btn-toggle-password" onclick="togglePasswordVisibility('loginPassword', this)">👁 Mostrar</button>
+                                </div>
+                            </div>
+
+                            <div class="flow-link-row right">
+                                <a href="#" class="link-subtle" onclick="mostrarToast('Función de recuperación simulada', 'info')">¿Olvidaste tu contraseña?</a>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary btn-block mt-4">Iniciar sesión</button>
+
+                            <div class="flow-link-row center mt-3">
+                                <span>¿No tienes cuenta? <a href="#" class="link-bold" onclick="mostrarPantallaOnboarding('registro1')">Regístrate</a></span>
+                            </div>
+
+                            <div class="slogan-badge-footer">
+                                <span class="leaf-icon">🌱</span>
+                                <small>Tu próxima comida, más clara.</small>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- 1.3 PANTALLA: CREAR CUENTA PASO 1 (ROL & DATOS) -->
+                <div id="pantallaRegistroPaso1" class="screen-flow hidden">
+                    <div class="flow-nav-top">
+                        <button class="btn-icon-back" onclick="mostrarPantallaOnboarding('bienvenida')">←</button>
+                        <span class="logo-text">kalo<span class="dot-orange">•</span></span>
+                        <span style="width:24px;"></span>
+                    </div>
+
+                    <div class="flow-body">
+                        <div class="flow-step-indicator">
+                            <span>Paso 1 de 2</span>
+                            <strong>Tu cuenta</strong>
+                        </div>
+
+                        <h2>Crear cuenta</h2>
+                        <label class="label-heading">¿Cómo quieres usar Kalo?</label>
+
+                        <!-- Selector de Rol Visual con Tarjetas -->
+                        <div class="role-selector-grid">
+                            <label class="role-card selected" id="cardRolComprador" onclick="seleccionarRolRegistro('comprador')">
+                                <input type="radio" name="rolRegistro" value="cliente" checked hidden>
+                                <span class="role-check">✓</span>
+                                <span class="role-title">Comprador</span>
+                            </label>
+                            <label class="role-card" id="cardRolRestaurante" onclick="seleccionarRolRegistro('restaurante')">
+                                <input type="radio" name="rolRegistro" value="restaurante" hidden>
+                                <span class="role-check">◻</span>
+                                <span class="role-title">Restaurante</span>
+                            </label>
+                            <label class="role-card" id="cardRolRepartidor" onclick="seleccionarRolRegistro('repartidor')">
+                                <input type="radio" name="rolRegistro" value="repartidor" hidden>
+                                <span class="role-check">◻</span>
+                                <span class="role-title">Repartidor</span>
+                            </label>
+                        </div>
+
+                        <form id="formRegistroPaso1" onsubmit="avanzarRegistroPaso2(event); return false;">
+                            <div class="form-group">
+                                <label for="regNombre">Nombre completo</label>
+                                <input type="text" id="regNombre" placeholder="Andrea Gómez" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="regCorreo">Correo electrónico</label>
+                                <input type="email" id="regCorreo" placeholder="andrea@mail.com" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="regPassword">Contraseña</label>
+                                <div class="input-wrap input-password-wrap">
+                                    <input type="password" id="regPassword" placeholder="••••••••" required oninput="validarRegPassword(this.value)">
+                                    <button type="button" class="btn-toggle-password" onclick="togglePasswordVisibility('regPassword', this)">👁 Mostrar</button>
+                                </div>
+                                <div class="pass-checklist">
+                                    <small id="chkPassLength" class="chk-item">◻ Al menos 8 caracteres</small>
+                                    <small id="chkPassComplexity" class="chk-item">◻ Una mayúscula y un número</small>
+                                </div>
+                            </div>
+
+                            <!-- Campos extra: RESTAURANTE -->
+                            <div id="camposRestaurante" class="campos-rol-extra hidden">
+                                <div class="form-group">
+                                    <label for="regRestEspecialidad">Especialidad del local</label>
+                                    <input type="text" id="regRestEspecialidad" placeholder="Ej: Comida Mediterránea, Bowl Saludable...">
+                                </div>
+                                <div class="form-group">
+                                    <label for="regRestDireccion">Dirección del local</label>
+                                    <input type="text" id="regRestDireccion" placeholder="Ej: Av. Brasil 1550, Valparaíso">
+                                </div>
+                                <div class="form-group">
+                                    <label for="regRestTelefono">Teléfono de contacto</label>
+                                    <input type="tel" id="regRestTelefono" placeholder="+569 9 1234 5678">
+                                </div>
+                            </div>
+
+                            <!-- Campos extra: REPARTIDOR -->
+                            <div id="camposRepartidor" class="campos-rol-extra hidden">
+                                <div class="form-group">
+                                    <label for="regRepTelefono">Teléfono de contacto</label>
+                                    <input type="tel" id="regRepTelefono" placeholder="+569 9 1234 5678">
+                                </div>
+                                <div class="form-group">
+                                    <label for="regRepVehiculo">Tipo de vehículo</label>
+                                    <select id="regRepVehiculo">
+                                        <option value="Motocicleta">🏍️ Motocicleta</option>
+                                        <option value="Bicicleta">🚲 Bicicleta</option>
+                                        <option value="Automóvil">🚗 Automóvil</option>
+                                        <option value="Patín eléctrico">🛴 Patín eléctrico</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary btn-block mt-3" id="btnContinuarRegistro">Continuar</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- 1.4 PANTALLA: CREAR CUENTA PASO 2 (PERFIL BIOMÉTRICO) -->
+                <div id="pantallaRegistroPaso2" class="screen-flow hidden">
+                    <div class="flow-nav-top">
+                        <button class="btn-icon-back" onclick="mostrarPantallaOnboarding('registro1')">←</button>
+                        <span class="logo-text">kalo<span class="dot-orange">•</span></span>
+                        <span style="width:24px;"></span>
+                    </div>
+
+                    <div class="flow-body">
+                        <div class="flow-step-indicator">
+                            <span>Paso 2 de 2</span>
+                            <strong>Tu perfil</strong>
+                        </div>
+
+                        <h2>Conozcámonos mejor</h2>
+                        <p class="flow-subtitle">Completa tu perfil para conocer tu punto de partida.</p>
+
+                        <form id="formRegistroPaso2" onsubmit="finalizarRegistro(event); return false;">
+                            <div class="form-group">
+                                <label for="regPeso">Peso (kg)</label>
+                                <input type="number" step="0.1" id="regPeso" placeholder="68.5" value="68.5" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="regAltura">Altura (m)</label>
+                                <input type="number" step="0.01" id="regAltura" placeholder="1.65" value="1.65" required oninput="validarAltura(this)">
+                                <small id="errorAltura" class="error-msg-inline hidden">La altura debe estar entre 1,00 y 2,50 m</small>
+                            </div>
+
+                            <div class="grid-inputs-row">
+                                <div class="form-group" style="flex:1;">
+                                    <label for="regEdad">Edad (años)</label>
+                                    <input type="number" id="regEdad" placeholder="28" value="28" required>
+                                </div>
+                                <div class="form-group" style="flex:1;">
+                                    <label for="regGenero">Género</label>
+                                    <select id="regGenero" required>
+                                        <option value="Femenino" selected>Femenino</option>
+                                        <option value="Masculino">Masculino</option>
+                                        <option value="Otro">Otro</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="privacy-note-card">
+                                <span class="privacy-icon">🛡️</span>
+                                <small>Usamos estos datos para calcular tu IMC y tu meta calórica. Están protegidos según la Ley 21.713.</small>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary btn-block mt-3">Crear cuenta</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- 1.5 PANTALLA: RESULTADO IMC ("TU PUNTO DE PARTIDA") -->
+                <div id="pantallaResultadoIMC" class="screen-flow hidden">
+                    <div class="flow-body">
+                        <div class="success-pill-top">✓ ¡Cuenta creada!</div>
+
+                        <h2>Tu punto de partida</h2>
+                        <p class="flow-subtitle"><span id="resultadoNombreUsuario">Andrea</span>, este es el resumen de tu perfil.</p>
+
+                        <div class="card-imc-result">
+                            <div class="card-imc-header">
+                                <span>Índice de masa corporal</span>
+                                <span class="pulse-icon">📈</span>
+                            </div>
+                            <div class="card-imc-number" id="resImcValor">25,2</div>
+                            <div class="card-imc-badge" id="resImcDiagnostico">• Sobrepeso leve</div>
+                            <div class="card-imc-stats">
+                                <span id="resPesoTag">68,5 kg</span> · <span id="resAlturaTag">1,65 m</span> · <span id="resEdadTag">28 años</span>
+                            </div>
+                        </div>
+
+                        <div class="card-meta-result">
+                            <span class="meta-label">Meta sugerida</span>
+                            <div class="meta-number" id="resMetaCalorica">1.800 kcal/día</div>
+                            <small class="meta-sub">Una referencia inicial, no una prescripción médica.</small>
+                        </div>
+
+                        <p class="note-orientative">El IMC es orientativo. Puedes revisar tus datos y tu meta en Mi perfil.</p>
+
+                        <button class="btn btn-primary btn-block mt-3" onclick="iniciarExploracionComprador()">Empezar a explorar</button>
+                    </div>
+                </div>
+
             </div>
         </div>
-    </section>
+    </div>
 
-    <!-- APLICACIÓN PRINCIPAL (Tras Login) -->
-    <div id="appPrincipal" class="hidden">
-        
-        <!-- BARRA SUPERIOR DE NAVEGACIÓN -->
-        <header class="navbar">
-            <div class="nav-brand">
-                <h2>🥗 Kalo</h2>
-                <span id="badgeRolUsuario" class="badge">Rol: Cliente</span>
-            </div>
-            <div class="nav-user-info">
-                <span id="nombreUsuarioHeader">Usuario Activo</span>
-                <!-- Botón Carrito (Solo visible en Rol Cliente) -->
-                <button id="btnVerCarrito" class="btn btn-carrito" onclick="abrirModalCarrito()">
-                    🛒 Carrito <span id="contadorCarrito" class="carrito-badge">0</span>
-                </button>
-                <button id="btnVerConsultasNoSQL" class="btn btn-nosql" onclick="abrirModalNoSQL()">🍃 Panel NoSQL (Evaluación)</button>
-                <button id="btnCerrarSesion" class="btn btn-outline" onclick="cerrarSesion()">Cerrar Sesión</button>
-            </div>
-        </header>
+    <!-- ==============================================================
+         2. VISTA CLIENTE / COMPRADOR (MÓVIL MOCKUPS 2, 3, 4)
+         ============================================================== -->
+    <div id="seccionCliente" class="contenedor-app-cliente hidden">
+        <div class="smartphone-frame">
+            <div class="smartphone-screen app-scrollable">
 
-        <!-- 1. VISTA CLIENTE / CONSUMIDOR -->
-        <main id="vistaCliente" class="vista-rol hidden">
-            <div class="container">
-                
-                <!-- Resumen de Perfil Biométrico del Cliente -->
-                <section class="biometric-banner">
-                    <div class="bio-text">
-                        <h3>Tu Perfil Biométrico Kalo</h3>
-                        <p>Datos sincronizados en tiempo real con MongoDB Atlas:</p>
+                <!-- HEADER MÓVIL FIJO (UBICACIÓN Y BARRA CALÓRICA DIARIA) -->
+                <header class="app-top-nav">
+                    <div class="status-bar-simulated">
+                        <span>09:41</span>
+                        <span>📶 5G 🔋 98%</span>
                     </div>
-                    <div class="bio-stats">
-                        <div class="bio-pill">
-                            <span class="bio-label">Peso</span>
-                            <strong id="bioPeso">-- kg</strong>
-                        </div>
-                        <div class="bio-pill">
-                            <span class="bio-label">Altura</span>
-                            <strong id="bioAltura">-- m</strong>
-                        </div>
-                        <div class="bio-pill">
-                            <span class="bio-label">IMC</span>
-                            <strong id="bioIMC" class="imc-highlight">--</strong>
-                        </div>
-                        <div class="bio-pill">
-                            <span class="bio-label">Meta Diaria</span>
-                            <strong id="bioCalorias">-- kcal</strong>
-                        </div>
-                    </div>
-                </section>
 
-                <!-- Tus Pedidos Activos (Con PIN de Entrega) -->
-                <section class="seccion-pedidos">
-                    <div class="seccion-header">
+                    <div class="address-selector-row">
                         <div>
-                            <h3>📦 Mis Pedidos y Código PIN de Entrega</h3>
-                            <p>Entrega este código de 4 dígitos al repartidor cuando llegue a tu puerta</p>
+                            <small class="text-xs uppercase text-subtle">ENTREGAR EN</small>
+                            <h4 class="address-title">📍 Av. Brasil 2950, Valparaíso <span class="arrow-down">⌄</span></h4>
                         </div>
-                        <button class="btn btn-secondary btn-sm" onclick="cargarPedidosCliente()">↻ Actualizar Pedidos</button>
+                        <span class="logo-text-mini">kalo<span class="dot-orange">•</span></span>
                     </div>
-                    <div id="listaPedidosCliente" class="pedidos-grid">
-                        <!-- Render dinámico de pedidos -->
-                    </div>
-                </section>
 
-                <!-- Catálogo de Comidas y Transparencia -->
-                <section class="seccion-catalogo">
-                    <div class="seccion-header">
+                    <!-- BARRA DE SEGUIMIENTO CALÓRICO DIARIO KALO -->
+                    <div class="calorie-tracker-card" onclick="irATabCliente('perfil')">
+                        <div class="tracker-header">
+                            <span class="tracker-icon">🌱</span>
+                            <span class="tracker-text">Has consumido <strong id="lblConsumoKcal">1.080</strong> de <strong id="lblMetaKcal">1.800</strong> kcal hoy</span>
+                        </div>
+                        <div class="tracker-bar-bg">
+                            <div id="trackerBarFill" class="tracker-bar-fill" style="width: 60%;"></div>
+                        </div>
+                    </div>
+                </header>
+
+                <!-- PESTAÑA A: EXPLORAR / CATÁLOGO (MOCKUP 2) -->
+                <div id="tabExplorar" class="tab-content active">
+                    
+                    <!-- Buscador -->
+                    <div class="search-input-wrap">
+                        <span class="search-icon">🔍</span>
+                        <input type="text" id="inputBuscarPlatillos" placeholder="Busca bowls, wraps, ensaladas..." oninput="filtrarPlatillosEnVivo()">
+                    </div>
+
+                    <!-- Pills de Categorías / Momentos del día -->
+                    <div class="meal-categories-scroll">
+                        <button class="pill-category" onclick="filtrarMomentoDia('Desayuno', this)">Desayuno</button>
+                        <button class="pill-category active" onclick="filtrarMomentoDia('Almuerzo', this)">Almuerzo</button>
+                        <button class="pill-category" onclick="filtrarMomentoDia('Cena', this)">Cena</button>
+                        <button class="pill-category" onclick="filtrarMomentoDia('Snack', this)">Snack</button>
+                    </div>
+
+                    <!-- Filtros Rápidos -->
+                    <div class="quick-filters-row">
+                        <button class="chip-filter" id="chipFiltro600" onclick="toggleFiltroRapido600(this)">≤ 600 kcal</button>
+                        <button class="chip-filter" id="chipFiltroProteina" onclick="toggleFiltroRapidoProteina(this)">Alto en proteínas</button>
+                        <button class="chip-filter chip-icon" onclick="abrirModalFiltrosAvanzados()">⚙ Filtros</button>
+                    </div>
+
+                    <!-- Título de Sección -->
+                    <div class="section-title-row">
                         <div>
-                            <h3>🍽️ Menú Saludable con Transparencia Total</h3>
-                            <p>Conoce calorías exactas, macronutrientes y origen de cada plato</p>
+                            <h3>Tu almuerzo, sin dudas</h3>
+                            <small class="text-subtle">Mayor Índice de Transparencia primero</small>
                         </div>
-                        <div class="filtro-calorias">
-                            <label>Filtrar por Calorías (Operador $lte):</label>
-                            <select id="selectFiltroCalorias" onchange="aplicarFiltroCalorias()">
-                                <option value="todas">Todos los platillos</option>
-                                <option value="500">Ligeros (≤ 500 kcal)</option>
-                                <option value="400">Ultra Fit (≤ 400 kcal)</option>
-                            </select>
-                        </div>
+                        <span class="sort-icon">⇅</span>
                     </div>
-                    <div id="gridPlatillos" class="platillos-grid">
-                        <!-- Render dinámico de platillos -->
-                    </div>
-                </section>
-            </div>
-        </main>
 
-        <!-- 2. VISTA RESTAURANTE / TIENDA -->
-        <main id="vistaRestaurante" class="vista-rol hidden">
-            <div class="container">
-                <div class="seccion-header">
-                    <div>
-                        <h3 id="tituloRestaurante">🏪 Panel de Restaurante y Cocina</h3>
-                        <p>Gestión de menú, transparencia nutricional y pedidos de clientes</p>
+                    <!-- Estado "Cargando" / Skeleton -->
+                    <div id="skeletonCatalogo" class="skeleton-container hidden">
+                        <div class="skeleton-card"></div>
+                        <div class="skeleton-card"></div>
                     </div>
-                    <span class="badge badge-success">Cocina Conectada a Atlas</span>
+
+                    <!-- Grid de Platillos -->
+                    <div id="gridPlatillosMobile" class="dishes-vertical-list">
+                        <!-- Render dinámico desde MongoDB Atlas -->
+                    </div>
+
+                    <!-- Estado Sin Resultados -->
+                    <div id="estadoSinResultados" class="empty-state-card hidden">
+                        <div class="empty-icon-circle">🥗</div>
+                        <h4>No encontramos platillos con estos filtros</h4>
+                        <p>Prueba ampliar las calorías o quitar una preferencia. Hay algo rico esperando por ti.</p>
+                        <button class="btn btn-primary btn-sm mt-3" onclick="limpiarTodosFiltros()">Quitar filtros</button>
+                    </div>
+
                 </div>
 
-                <div class="grid-dos-columnas">
-                    <!-- Formulario con Cálculo Dinámico de Transparencia -->
-                    <div class="card">
-                        <h4>➕ Publicar Nuevo Platillo</h4>
-                        <p style="font-size:12px; color:#6b7280; margin-bottom:12px;">Completa datos obligatorios (50% base). Mientras más detalles opcionales agregues, mayor será tu <strong>Índice de Transparencia</strong>.</p>
-                        
-                        <!-- Barra de Transparencia Dinámica -->
-                        <div class="transparencia-calc-box">
-                            <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:600; margin-bottom:6px;">
-                                <span>Índice de Transparencia:</span>
-                                <strong id="transparenciaPorcentajeTag" style="color:#f59e0b;">50%</strong>
+                <!-- PESTAÑA B: MIS PEDIDOS & SEGUIMIENTO (MOCKUP 3 Y 4.5) -->
+                <div id="tabPedidos" class="tab-content hidden">
+                    
+                    <div class="orders-tab-header">
+                        <h3>Mis pedidos</h3>
+                        <p class="text-subtle">Tus platillos y planes, en un solo lugar.</p>
+
+                        <!-- Filtro de pedidos -->
+                        <div class="subtabs-pills">
+                            <button class="subtab-pill active" onclick="filtrarPedidosTab('todos', this)">Todos</button>
+                            <button class="subtab-pill" onclick="filtrarPedidosTab('curso', this)">En curso</button>
+                            <button class="subtab-pill" onclick="filtrarPedidosTab('entregados', this)">Entregados</button>
+                        </div>
+                    </div>
+
+                    <!-- Contenedor del Pedido Activo en Seguimiento (Stepper en vivo) -->
+                    <div id="panelSeguimientoPedido" class="order-tracking-card hidden">
+                        <div class="tracking-top-bar">
+                            <span id="trackCodPedido">Pedido #1042</span>
+                            <span class="logo-text-mini">kalo<span class="dot-orange">•</span></span>
+                        </div>
+
+                        <h4 id="trackTituloEstado">En preparación</h4>
+                        <p id="trackSubtituloEstado" class="text-subtle">Verde Vivo está preparando tu comida.</p>
+
+                        <!-- STEPPER DE 4 ETAPAS -->
+                        <div class="stepper-horizontal">
+                            <div class="step-node active" id="stepNode1">
+                                <span class="step-dot">✓</span>
+                                <small>Pagado</small>
                             </div>
-                            <div class="progress-bar-bg">
-                                <div id="transparenciaBarraVisual" class="progress-bar-fill" style="width: 50%; background:#f59e0b;"></div>
+                            <div class="step-line active" id="stepLine1"></div>
+                            <div class="step-node active" id="stepNode2">
+                                <span class="step-dot">2</span>
+                                <small>En preparación</small>
+                            </div>
+                            <div class="step-line" id="stepLine2"></div>
+                            <div class="step-node" id="stepNode3">
+                                <span class="step-dot">3</span>
+                                <small>En camino</small>
+                            </div>
+                            <div class="step-line" id="stepLine3"></div>
+                            <div class="step-node" id="stepNode4">
+                                <span class="step-dot">4</span>
+                                <small>Entregado</small>
                             </div>
                         </div>
 
-                        <form id="formNuevoPlatillo">
-                            <!-- Datos Obligatorios -->
-                            <div class="form-group">
-                                <label>Nombre del Platillo *</label>
-                                <input type="text" id="platoNombre" placeholder="ej. Salmón al Horno con Quinoa" required>
+                        <!-- 1. En preparación: Tiempo estimado -->
+                        <div id="boxPrepTiempo" class="prep-estimate-box">
+                            <span class="timer-icon">⏱️</span>
+                            <div>
+                                <strong>25-35 min</strong>
+                                <small class="display-block text-subtle">Tiempo estimado de entrega</small>
                             </div>
-                            <div style="display:flex; gap:10px;">
-                                <div class="form-group" style="flex:1;">
-                                    <label>Precio ($ CLP) *</label>
-                                    <input type="number" id="platoPrecio" placeholder="8500" required>
+                        </div>
+
+                        <!-- 2. En camino: CAJA DESTACADA DE PIN DE 4 DÍGITOS -->
+                        <div id="boxPinDestacado" class="pin-highlight-box hidden">
+                            <span class="pin-shield-title">🛡️ Tu PIN de entrega</span>
+                            <div class="pin-huge-digits" id="trackPinNumero">0492</div>
+                            <p class="pin-security-hint">Por tu seguridad, dicta este PIN al repartidor para recibir tu comida. No lo compartas antes.</p>
+                            
+                            <div class="driver-info-row">
+                                <div class="driver-avatar">JP</div>
+                                <div>
+                                    <strong>Juan P.</strong>
+                                    <small class="display-block text-subtle">Moto · Tu repartidor</small>
                                 </div>
-                                <div class="form-group" style="flex:1;">
-                                    <label>Calorías (kcal) *</label>
-                                    <input type="number" id="platoCalorias" placeholder="480" required>
+                                <div class="driver-eta">Llega en <strong>12 min</strong></div>
+                            </div>
+                        </div>
+
+                        <!-- 3. Entregado: Suma calórica al día y Botón Evaluar -->
+                        <div id="boxEntregaCompletada" class="delivered-notice-box hidden">
+                            <div class="delivered-notice-header">
+                                <span>🌱 Sumamos 520 kcal a tu consumo de hoy</span>
+                            </div>
+                            <small class="text-subtle">1.600 de 1.800 kcal · Te quedan 200 kcal</small>
+                            <button class="btn btn-primary btn-block mt-3" onclick="abrirModalEvaluacion()">Evaluar pedido</button>
+                        </div>
+
+                        <!-- Resumen del platillo en seguimiento -->
+                        <div class="tracking-dish-summary">
+                            <div class="summary-dish-row">
+                                <img src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=120&q=80" alt="Bowl" class="dish-thumb-sm">
+                                <div>
+                                    <strong id="trackNombrePlato">Bowl de salmón y quinoa</strong>
+                                    <small class="display-block text-subtle" id="trackRestaurantePlato">Verde Vivo · 520 kcal · 1 porción</small>
+                                </div>
+                                <span class="summary-price" id="trackPrecioPlato">$8.990</span>
+                            </div>
+                            <div class="summary-totals">
+                                <div class="linea-flex"><span>Envío</span> <span>$1.490</span></div>
+                                <div class="linea-flex bold"><span>Total pagado</span> <span id="trackTotalPagado">$10.480</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Lista General de Pedidos del Cliente -->
+                    <div id="listaGeneralPedidos" class="orders-list-scroll">
+                        <!-- Render de pedidos -->
+                    </div>
+
+                    <!-- Estado Vacío de Pedidos -->
+                    <div id="pedidosEstadoVacio" class="empty-state-card hidden">
+                        <div class="empty-icon-circle">📦</div>
+                        <h4>Aún no tienes pedidos</h4>
+                        <p>Encuentra algo rico para tu día. Aquí podrás seguir tus pedidos y revisar tus compras.</p>
+                        <button class="btn btn-primary btn-sm mt-3" onclick="irATabCliente('explorar')">Explorar platillos</button>
+                    </div>
+
+                </div>
+
+                <!-- PESTAÑA C: CARRITO NUTRICIONAL (MOCKUP 2.6) -->
+                <div id="tabCarrito" class="tab-content hidden">
+                    <div class="flow-nav-top">
+                        <button class="btn-icon-back" onclick="irATabCliente('explorar')">←</button>
+                        <span class="page-title-header">Tu carrito</span>
+                        <span class="logo-text-mini">kalo<span class="dot-orange">•</span></span>
+                    </div>
+
+                    <div class="cart-address-badge">
+                        <span>📍 Av. Brasil 2950, Valparaíso ⌄</span>
+                        <small class="text-subtle display-block">Entrega estimada: 25-35 min</small>
+                    </div>
+
+                    <!-- Items en Carrito -->
+                    <div id="cartItemsList" class="cart-items-container">
+                        <!-- Render dinámico -->
+                    </div>
+
+                    <!-- Balance Nutricional de la Compra -->
+                    <div class="nutrition-impact-card">
+                        <div class="impact-row">
+                            <span>Total del pedido:</span>
+                            <strong id="cartKcalTotal" class="kcal-badge-total">520 kcal</strong>
+                        </div>
+                        <div class="impact-goal-badge" id="cartMetaRestante">
+                            ✓ Te quedarán 280 kcal de tu meta
+                        </div>
+                        <small class="impact-scenario-text" id="cartEscenarioTexto">
+                            Escenario de este carrito: 1.080 kcal consumidas antes del pedido + 520 kcal = 1.600 de 1.800 kcal.
+                        </small>
+                    </div>
+
+                    <!-- Desglose de Pago -->
+                    <div class="cart-payment-breakdown">
+                        <div class="linea-flex"><span>Subtotal</span> <span id="cartSubtotal">$8.990</span></div>
+                        <div class="linea-flex"><span>Costo de envío</span> <span>$1.490</span></div>
+                        <div class="linea-flex total-line"><span>Total</span> <strong id="cartTotalFinal">$10.480</strong></div>
+                    </div>
+
+                    <button class="btn btn-primary btn-block btn-lg mt-3" id="btnPagarCarrito" onclick="procesarPagoCarrito()">
+                        Ir a pagar · <span id="lblBtnPagar">$10.480</span>
+                    </button>
+                </div>
+
+                <!-- PESTAÑA D: MI PERFIL & PLANES (MOCKUP 4) -->
+                <div id="tabPerfil" class="tab-content hidden">
+                    <div class="profile-header-card">
+                        <div class="profile-avatar-circle" id="perfilAvatarIniciales">AG</div>
+                        <h3 id="perfilNombre">Andrea Gómez</h3>
+                        <p class="text-subtle" id="perfilCorreo">andrea@mail.com</p>
+                    </div>
+
+                    <!-- Métricas Rápidas IMC & Meta -->
+                    <div class="profile-metrics-grid">
+                        <div class="metric-pill-card">
+                            <small>IMC actual</small>
+                            <strong id="perfilImcValor">25,2</strong>
+                            <span class="subtext-status" id="perfilImcEstado">Sobrepeso leve</span>
+                        </div>
+                        <div class="metric-pill-card">
+                            <small>Meta sugerida</small>
+                            <strong id="perfilMetaValor">1.800 kcal/día</strong>
+                            <span class="subtext-status">No es prescripción</span>
+                        </div>
+                    </div>
+
+                    <!-- Datos Biométricos Editables -->
+                    <div class="card-profile-section">
+                        <div class="section-edit-title">
+                            <h4>Datos biométricos</h4>
+                            <button class="btn-edit-icon" onclick="guardarEdicionBiometrica()">💾 Guardar</button>
+                        </div>
+
+                        <div class="grid-inputs-row">
+                            <div class="form-group" style="flex:1;">
+                                <label>Peso (kg)</label>
+                                <input type="number" step="0.1" id="editPeso" value="68.5">
+                            </div>
+                            <div class="form-group" style="flex:1;">
+                                <label>Altura (m)</label>
+                                <input type="number" step="0.01" id="editAltura" value="1.65">
+                            </div>
+                        </div>
+
+                        <div class="grid-inputs-row">
+                            <div class="form-group" style="flex:1;">
+                                <label>Edad (años)</label>
+                                <input type="number" id="editEdad" value="28">
+                            </div>
+                            <div class="form-group" style="flex:1;">
+                                <label>Género</label>
+                                <select id="editGenero">
+                                    <option value="Femenino" selected>Femenino</option>
+                                    <option value="Masculino">Masculino</option>
+                                    <option value="Otro">Otro</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Enlaces de Navegación del Perfil -->
+                    <div class="profile-links-list">
+                        <button class="profile-link-btn" onclick="abrirVistaPlanes()">
+                            <span>🥗 Plan nutricional activo: <strong>Equilibrio</strong></span>
+                            <span>›</span>
+                        </button>
+                        <button class="profile-link-btn" onclick="irATabCliente('pedidos')">
+                            <span>📦 Mis pedidos</span>
+                            <span>›</span>
+                        </button>
+                        <button class="profile-link-btn" onclick="cerrarSesion()">
+                            <span>🚪 Cerrar sesión</span>
+                            <span>›</span>
+                        </button>
+                    </div>
+
+                    <button class="btn-danger-link mt-4" onclick="abrirModalEliminarDatos()">
+                        🗑️ Eliminar mis datos
+                    </button>
+                </div>
+
+                <!-- BARRA DE NAVEGACIÓN INFERIOR (BOTTOM BAR) -->
+                <nav class="bottom-nav-bar">
+                    <button class="nav-item active" id="btnNavExplorar" onclick="irATabCliente('explorar')">
+                        <span class="nav-icon">🍽️</span>
+                        <span>Explorar</span>
+                    </button>
+                    <button class="nav-item" id="btnNavPedidos" onclick="irATabCliente('pedidos')">
+                        <span class="nav-icon">📦</span>
+                        <span>Pedidos</span>
+                    </button>
+                    <button class="nav-item" id="btnNavCarrito" onclick="irATabCliente('carrito')">
+                        <span class="nav-icon">🛒</span>
+                        <span>Carrito</span>
+                        <span id="badgeContadorCarrito" class="cart-badge-dot">0</span>
+                    </button>
+                    <button class="nav-item" id="btnNavPerfil" onclick="irATabCliente('perfil')">
+                        <span class="nav-icon">👤</span>
+                        <span>Mi perfil</span>
+                    </button>
+                </nav>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- ==============================================================
+         3. VISTA RESTAURANTE (ESCRITORIO / DASHBOARD MOCKUP 5)
+         ============================================================== -->
+    <div id="seccionRestaurante" class="contenedor-restaurante-desktop hidden">
+        <!-- SIDEBAR IZQUIERDO -->
+        <aside class="sidebar-desktop">
+            <div class="sidebar-brand">
+                <span class="logo-text-large">kalo<span class="dot-orange">•</span></span>
+                <span class="role-badge-side">Restaurante</span>
+            </div>
+
+            <nav class="sidebar-menu">
+                <button class="menu-item active" id="btnSidePedidos" onclick="cambiarTabRestaurante('pedidos')">
+                    <span class="menu-icon">📋</span> Pedidos entrantes
+                </button>
+                <button class="menu-item" id="btnSidePlatillos" onclick="cambiarTabRestaurante('platillos')">
+                    <span class="menu-icon">🥗</span> Mis platillos
+                </button>
+                <button class="menu-item" id="btnSideLocal" onclick="cambiarTabRestaurante('local')">
+                    <span class="menu-icon">🏪</span> Mi local
+                </button>
+                <button class="menu-item" id="btnSideEvaluaciones" onclick="cambiarTabRestaurante('evaluaciones')">
+                    <span class="menu-icon">⭐</span> Evaluaciones
+                </button>
+            </nav>
+
+            <div class="sidebar-footer-box">
+                <div class="support-card">
+                    <span class="support-icon">🎧</span>
+                    <div>
+                        <small>Estamos para ayudarte</small>
+                        <strong class="display-block">Contactar soporte ›</strong>
+                    </div>
+                </div>
+
+                <div class="current-restaurant-info">
+                    <strong id="lblSideNombreRestaurante">Verde Vivo</strong>
+                    <small class="display-block text-subtle">Cocina Certificada</small>
+                    <button class="btn-logout-link" onclick="cerrarSesion()">Cerrar sesión</button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- CONTENIDO PRINCIPAL ESCRITORIO -->
+        <main class="main-desktop-content">
+            <!-- Header Superior Desktop -->
+            <header class="top-header-desktop">
+                <div class="header-left-info">
+                    <h2 id="lblTopRestauranteNombre">Verde Vivo · Cocina Santiago</h2>
+                    <span class="status-online-dot">● En línea</span>
+                </div>
+
+                <div class="header-right-widgets">
+                    <div class="transparency-score-badge">
+                        <span>Índice de Transparencia</span>
+                        <strong class="score-green" id="lblScoreTransparenciaTop">94%</strong>
+                    </div>
+
+                    <div class="switch-toggle-wrap">
+                        <label class="switch">
+                            <input type="checkbox" checked id="switchLocalAbierto">
+                            <span class="slider round"></span>
+                        </label>
+                        <span class="switch-label">Local abierto</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- 3.1 TAB: PEDIDOS ENTRANTES (KANBAN BOARD) -->
+            <section id="tabRestPedidos" class="tab-desktop-view active">
+                
+                <!-- Banner de Alerta Nuevo Pedido -->
+                <div class="alert-banner-pedido" id="bannerAlertaPedido">
+                    <div class="banner-icon-col">🔔</div>
+                    <div class="banner-info-col">
+                        <strong>Nuevo pedido #1042</strong>
+                        <span>Andrea Gómez · $10.480 · 1x Bowl de salmón y quinoa</span>
+                    </div>
+                    <button class="btn btn-primary btn-sm" onclick="enfocarPedidoKanban('1042')">Ver pedido</button>
+                </div>
+
+                <!-- TABLERO KANBAN DE 4 COLUMNAS -->
+                <div class="kanban-board-grid">
+                    
+                    <!-- Columna 1: Pagado -->
+                    <div class="kanban-column">
+                        <div class="kanban-col-header">
+                            <span class="col-dot dot-yellow">●</span>
+                            <h4>Pagado</h4>
+                            <span class="col-count" id="countColPagado">1</span>
+                        </div>
+                        <div class="kanban-cards-list" id="kanbanColPagado">
+                            <!-- Cards -->
+                        </div>
+                    </div>
+
+                    <!-- Columna 2: En preparación -->
+                    <div class="kanban-column">
+                        <div class="kanban-col-header">
+                            <span class="col-dot dot-blue">●</span>
+                            <h4>En preparación</h4>
+                            <span class="col-count" id="countColPrep">1</span>
+                        </div>
+                        <div class="kanban-cards-list" id="kanbanColPrep">
+                            <!-- Cards -->
+                        </div>
+                    </div>
+
+                    <!-- Columna 3: En camino -->
+                    <div class="kanban-column">
+                        <div class="kanban-col-header">
+                            <span class="col-dot dot-purple">●</span>
+                            <h4>En camino</h4>
+                            <span class="col-count" id="countColCamino">1</span>
+                        </div>
+                        <div class="kanban-cards-list" id="kanbanColCamino">
+                            <!-- Cards -->
+                        </div>
+                    </div>
+
+                    <!-- Columna 4: Entregado -->
+                    <div class="kanban-column">
+                        <div class="kanban-col-header">
+                            <span class="col-dot dot-green">●</span>
+                            <h4>Entregado</h4>
+                            <span class="col-count" id="countColEntregado">1</span>
+                        </div>
+                        <div class="kanban-cards-list" id="kanbanColEntregado">
+                            <!-- Cards -->
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- 3.2 TAB: MIS PLATILLOS (TABLA & GESTIÓN) -->
+            <section id="tabRestPlatillos" class="tab-desktop-view hidden">
+                <div class="desktop-section-header">
+                    <div>
+                        <h3>Mis platillos</h3>
+                        <p class="text-subtle">Gestiona tu menú, transparencia y opciones para que la gente elija mejor.</p>
+                    </div>
+                    <button class="btn btn-primary" onclick="cambiarTabRestaurante('crearPlatillo')">+ Nuevo platillo</button>
+                </div>
+
+                <div class="filters-table-row">
+                    <div class="subtabs-pills">
+                        <button class="subtab-pill active">Todos</button>
+                        <button class="subtab-pill">Activos</button>
+                        <button class="subtab-pill">Pausados</button>
+                    </div>
+                    <input type="text" class="input-search-table" placeholder="🔍 Buscar platillo...">
+                </div>
+
+                <!-- Tabla de Platillos -->
+                <div class="table-responsive-card">
+                    <table class="desktop-data-table">
+                        <thead>
+                            <tr>
+                                <th>Platillo</th>
+                                <th>Categoría</th>
+                                <th>Calorías</th>
+                                <th>Precio</th>
+                                <th>Transparencia</th>
+                                <th>Estado</th>
+                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbodyPlatillosRestaurante">
+                            <!-- Render dinámico -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- 3.3 TAB: CREAR PLATILLO CON INGREDIENTES & CÁLCULO NUTRICIONAL (MOCKUP 5.2) -->
+            <section id="tabRestCrearPlatillo" class="tab-desktop-view hidden">
+                <div class="desktop-section-header">
+                    <div>
+                        <h3>Crear platillo</h3>
+                        <p class="text-subtle">Transparente tu receta. Recuerda: los ingredientes y la porción construyen tu Índice de Transparencia.</p>
+                    </div>
+                    <button class="btn btn-outline" onclick="cambiarTabRestaurante('platillos')">← Volver a platillos</button>
+                </div>
+
+                <div class="create-dish-grid-two-cols">
+                    <!-- Formulario Izquierdo: Datos e Ingredientes -->
+                    <div class="form-dish-left-col">
+                        <form id="formCrearPlatilloCompleto" onsubmit="guardarNuevoPlatilloRestaurante(event); return false;">
+                            <div class="card-inner-form">
+                                <h4>Información del platillo</h4>
+                                <div class="grid-inputs-row">
+                                    <div class="form-group" style="flex:2;">
+                                        <label>Nombre del platillo *</label>
+                                        <input type="text" id="newPlatoNombre" placeholder="Bowl de salmón y quinoa" required oninput="actualizarPreviewPlatillo()">
+                                    </div>
+                                    <div class="form-group" style="flex:1;">
+                                        <label>Categoría</label>
+                                        <select id="newPlatoCategoria" onchange="actualizarPreviewPlatillo()">
+                                            <option value="Almuerzo">Almuerzo</option>
+                                            <option value="Desayuno">Desayuno</option>
+                                            <option value="Cena">Cena</option>
+                                            <option value="Snack">Snack</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="grid-inputs-row">
+                                    <div class="form-group" style="flex:1;">
+                                        <label>Precio ($ CLP) *</label>
+                                        <input type="number" id="newPlatoPrecio" placeholder="8990" value="8990" required oninput="actualizarPreviewPlatillo()">
+                                    </div>
+                                    <div class="form-group" style="flex:1;">
+                                        <label>URL Imagen del platillo</label>
+                                        <input type="url" id="newPlatoImg" placeholder="https://..." value="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80" oninput="actualizarPreviewPlatillo()">
+                                    </div>
                                 </div>
                             </div>
 
-                            <!-- Datos Opcionales para subir el % de Transparencia -->
-                            <div class="opcionales-box">
-                                <small style="font-weight:600; color:#4b5563; display:block; margin-bottom:8px;">
-                                    ✨ Opcionales (Aumentan tu puntuación de Transparencia):
-                                </small>
-                                
-                                <div style="display:flex; gap:6px;">
-                                    <div class="form-group" style="flex:1;">
-                                        <label style="font-size:11px;">Proteína (+10%)</label>
-                                        <input type="number" id="platoProteina" placeholder="g" oninput="actualizarBarraTransparencia()">
-                                    </div>
-                                    <div class="form-group" style="flex:1;">
-                                        <label style="font-size:11px;">Carbos (+10%)</label>
-                                        <input type="number" id="platoCarbos" placeholder="g" oninput="actualizarBarraTransparencia()">
-                                    </div>
-                                    <div class="form-group" style="flex:1;">
-                                        <label style="font-size:11px;">Grasas (+10%)</label>
-                                        <input type="number" id="platoGrasas" placeholder="g" oninput="actualizarBarraTransparencia()">
-                                    </div>
+                            <!-- Constructor Dinámico de Ingredientes (Sin letra chica) -->
+                            <div class="card-inner-form mt-3">
+                                <div class="flex-between">
+                                    <h4>Ingredientes (Sin letra chica)</h4>
+                                    <button type="button" class="btn btn-outline btn-sm" onclick="agregarFilaIngrediente()">+ Agregar ingrediente</button>
                                 </div>
+                                <p class="text-subtle text-xs">Especifica porción y método de cocción para calcular nutrientes exactos.</p>
 
-                                <div style="display:flex; gap:8px;">
-                                    <div class="form-group" style="flex:1;">
-                                        <label style="font-size:11px;">Peso Porción (+10%)</label>
-                                        <input type="number" id="platoPesoPorcion" placeholder="ej. 350g" oninput="actualizarBarraTransparencia()">
-                                    </div>
-                                    <div class="form-group" style="flex:1;">
-                                        <label style="font-size:11px;">Alérgenos (+5%)</label>
-                                        <input type="text" id="platoAlergenos" placeholder="ej. Sin gluten" oninput="actualizarBarraTransparencia()">
-                                    </div>
-                                </div>
-
-                                <div class="form-group" style="margin-bottom:6px;">
-                                    <label style="display:flex; align-items:center; gap:8px; font-size:12px; cursor:pointer;">
-                                        <input type="checkbox" id="platoLimpio" onchange="actualizarBarraTransparencia()">
-                                        <span>Sello 100% Ingredientes Limpios / Orgánicos (+5%)</span>
-                                    </label>
+                                <div class="table-responsive-card mt-2">
+                                    <table class="ingredients-table" id="tablaIngredientesDinamicos">
+                                        <thead>
+                                            <tr>
+                                                <th>Ingrediente</th>
+                                                <th>Cantidad (g/ml)</th>
+                                                <th>Método de cocción</th>
+                                                <th></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td><input type="text" value="Salmón" class="ing-nombre" oninput="recalcularNutrientesPlatillo()"></td>
+                                                <td><input type="number" value="150" class="ing-cantidad" oninput="recalcularNutrientesPlatillo()"></td>
+                                                <td>
+                                                    <select class="ing-coccion" onchange="recalcularNutrientesPlatillo()">
+                                                        <option value="A la plancha">A la plancha</option>
+                                                        <option value="Al vapor">Al vapor</option>
+                                                        <option value="Horneado">Horneado</option>
+                                                        <option value="Fresco">Fresco</option>
+                                                    </select>
+                                                </td>
+                                                <td><button type="button" class="btn-remove-row" onclick="eliminarFilaIngrediente(this)">×</button></td>
+                                            </tr>
+                                            <tr>
+                                                <td><input type="text" value="Quinoa" class="ing-nombre" oninput="recalcularNutrientesPlatillo()"></td>
+                                                <td><input type="number" value="100" class="ing-cantidad" oninput="recalcularNutrientesPlatillo()"></td>
+                                                <td>
+                                                    <select class="ing-coccion" onchange="recalcularNutrientesPlatillo()">
+                                                        <option value="Al vapor">Al vapor</option>
+                                                        <option value="Hervido">Hervido</option>
+                                                    </select>
+                                                </td>
+                                                <td><button type="button" class="btn-remove-row" onclick="eliminarFilaIngrediente(this)">×</button></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
                                 </div>
                             </div>
 
-                            <button type="submit" class="btn btn-primary btn-block" style="margin-top:14px;">
-                                Guardar y Publicar Platillo
-                            </button>
+                            <button type="submit" class="btn btn-primary btn-block btn-lg mt-4">Guardar y publicar platillo</button>
                         </form>
                     </div>
 
-                    <!-- Menú Publicado y Pedidos en Cocina -->
-                    <div class="card">
-                        <h4>Platillos Publicados en tu Menú</h4>
-                        <div id="platillosRestauranteList" class="lista-items">
-                            <!-- Render de platillos del restaurante -->
-                        </div>
+                    <!-- Panel Derecho: Preview y Cálculo de Transparencia en Tiempo Real -->
+                    <div class="form-dish-right-col">
+                        <div class="card-preview-live">
+                            <span class="preview-tag">Vista previa en la App</span>
+                            <div class="dish-preview-card">
+                                <img src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80" alt="Platillo" id="prevImgPlatillo" class="preview-dish-img">
+                                <div class="preview-dish-body">
+                                    <span class="badge-mini-green">✓ Relata 100% transparente</span>
+                                    <h4 id="prevNombrePlatillo">Bowl de salmón y quinoa</h4>
+                                    <span class="text-subtle text-xs" id="prevRestaurantePlatillo">Verde Vivo · Valparaíso</span>
 
-                        <h4 style="margin-top:24px;">Pedidos Recibidos</h4>
-                        <div id="pedidosCocinaList" class="lista-items">
-                            <!-- Render de pedidos -->
+                                    <!-- Macros dinámicos -->
+                                    <div class="preview-macros-grid mt-2">
+                                        <div class="macro-cell">
+                                            <span class="cell-num" id="prevKcalTotal">520</span>
+                                            <small>kcal</small>
+                                        </div>
+                                        <div class="macro-cell">
+                                            <span class="cell-num" id="prevProtTotal">38g</span>
+                                            <small>Proteínas</small>
+                                        </div>
+                                        <div class="macro-cell">
+                                            <span class="cell-num" id="prevCarbTotal">45g</span>
+                                            <small>Carbos</small>
+                                        </div>
+                                        <div class="macro-cell">
+                                            <span class="cell-num" id="prevGrasaTotal">18g</span>
+                                            <small>Grasas</small>
+                                        </div>
+                                    </div>
+
+                                    <div class="preview-footer-row mt-3">
+                                        <strong class="price-lg" id="prevPrecioPlatillo">$8.990</strong>
+                                        <button class="btn btn-primary btn-sm" disabled>Agregar al carrito</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Puntuación de Transparencia Estimada -->
+                            <div class="card-transparency-score mt-3">
+                                <div class="flex-between">
+                                    <span>Transparencia nutricional:</span>
+                                    <strong class="score-number" id="lblTranspCalculada">85/100</strong>
+                                </div>
+                                <div class="progress-bar-bg mt-1">
+                                    <div class="progress-bar-fill" id="barTranspCalculada" style="width: 85%;"></div>
+                                </div>
+                                <small class="text-subtle text-xs mt-2 display-block">
+                                    Has declarado ingredientes exactos, macronutrientes y método de cocción. Tu receta genera máxima confianza.
+                                </small>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        </main>
+            </section>
 
-        <!-- 3. VISTA REPARTIDOR (MOBILE-FIRST) -->
-        <main id="vistaRepartidor" class="vista-rol hidden">
-            <div class="mobile-simulator-wrapper">
-                <div class="smartphone-frame">
-                    <div class="smartphone-screen">
-                        
-                        <!-- Barra de estado simulada -->
-                        <div class="phone-status-bar">
-                            <span>09:41</span>
-                            <span>📶 5G 🔋 98%</span>
+            <!-- 3.4 TAB: MI LOCAL & VALIDACIÓN DE DARK KITCHENS (MOCKUP 5.3) -->
+            <section id="tabRestLocal" class="tab-desktop-view hidden">
+                <div class="desktop-section-header">
+                    <div>
+                        <h3>Mi local</h3>
+                        <p class="text-subtle">La transparencia construye confianza. Cumple con las fotos de la cocina para mejorar tu índice.</p>
+                    </div>
+                    <button class="btn btn-primary" onclick="mostrarToast('Datos del local actualizados', 'success')">Guardar cambios</button>
+                </div>
+
+                <div class="grid-local-info">
+                    <!-- Datos del local -->
+                    <div class="card-inner-form">
+                        <h4>Datos del local</h4>
+                        <div class="form-group">
+                            <label>Nombre del restaurante</label>
+                            <input type="text" value="Verde Vivo - Cocina Santiago">
                         </div>
-
-                        <!-- Header App Repartidor -->
-                        <div class="phone-app-header">
-                            <div>
-                                <small>App Repartidor Mobile-First</small>
-                                <h4>🛵 Kalo Delivery</h4>
-                            </div>
-                            <span class="status-dot-online" id="repartidorEstadoPill">Online</span>
+                        <div class="form-group">
+                            <label>Dirección</label>
+                            <input type="text" value="Av. Providencia 1240, Providencia, Santiago">
                         </div>
-
-                        <!-- Tarjeta de Pedido y Aceptación -->
-                        <div class="phone-content">
-                            <div class="order-pickup-card">
-                                <div style="display:flex; justify-content:space-between; align-items:center;">
-                                    <span class="badge-mini" id="repartidorPedidoBadge">En Preparación</span>
-                                    <strong id="repartidorCodPedido" style="font-size:13px;">KALO-2026-0001</strong>
-                                </div>
-                                <h5 id="repartidorClienteNombre" style="margin-top:8px;">Cliente: Andrea Gómez</h5>
-                                <p id="repartidorDireccion">📍 Av. Libertad 450, Viña del Mar</p>
-                                <p id="repartidorTotalPedido" style="font-weight:600; color:#059669;">Total: $8.500</p>
-                                
-                                <!-- Botón Aceptar Pedido -->
-                                <button id="btnAceptarReparto" class="btn btn-secondary btn-block btn-sm" style="margin-top:10px;" onclick="aceptarPedidoReparto()">
-                                    🛵 Aceptar Reparto
-                                </button>
-                                <div class="order-divider"></div>
-                                <span class="order-alert">⚠️ Solicita el PIN de 4 dígitos al cliente para validar la entrega</span>
+                        <div class="grid-inputs-row">
+                            <div class="form-group" style="flex:1;">
+                                <label>Teléfono</label>
+                                <input type="text" value="+569 8765 4321">
                             </div>
-
-                            <!-- Teclado Numérico Interactivo (PIN Pad) -->
-                            <div class="pin-validation-box">
-                                <label>Ingresar PIN del Cliente</label>
-                                <div class="pin-display">
-                                    <input type="text" id="inputPinPantalla" maxlength="4" placeholder="----" readonly>
-                                </div>
-
-                                <div class="keypad-grid">
-                                    <button type="button" class="key-btn" onclick="teclearPin('1')">1</button>
-                                    <button type="button" class="key-btn" onclick="teclearPin('2')">2</button>
-                                    <button type="button" class="key-btn" onclick="teclearPin('3')">3</button>
-                                    <button type="button" class="key-btn" onclick="teclearPin('4')">4</button>
-                                    <button type="button" class="key-btn" onclick="teclearPin('5')">5</button>
-                                    <button type="button" class="key-btn" onclick="teclearPin('6')">6</button>
-                                    <button type="button" class="key-btn" onclick="teclearPin('7')">7</button>
-                                    <button type="button" class="key-btn" onclick="teclearPin('8')">8</button>
-                                    <button type="button" class="key-btn" onclick="teclearPin('9')">9</button>
-                                    <button type="button" class="key-btn key-action" onclick="borrarPin()">⌫</button>
-                                    <button type="button" class="key-btn" onclick="teclearPin('0')">0</button>
-                                    <button type="button" class="key-btn key-clear" onclick="limpiarPin()">C</button>
-                                </div>
-
-                                <button id="btnValidarPin" class="btn btn-success btn-block" onclick="enviarValidacionPin()">
-                                    ✓ Confirmar Entrega
-                                </button>
+                            <div class="form-group" style="flex:1;">
+                                <label>Especialidad</label>
+                                <input type="text" value="Comida saludable y bowls funcionales">
                             </div>
                         </div>
+                    </div>
 
+                    <!-- Tarjeta de Desglose de Transparencia -->
+                    <div class="card-inner-form">
+                        <div class="flex-between">
+                            <h4>Índice de Transparencia</h4>
+                            <span class="score-huge">94<small>/100</small></span>
+                        </div>
+                        <p class="text-subtle text-xs">Puntaje ponderado en base a información pública verificada.</p>
+
+                        <div class="metrics-transp-breakdown mt-3">
+                            <div class="metric-line">
+                                <div class="flex-between text-xs">
+                                    <span>Claridad de ingredientes</span>
+                                    <strong>95/100</strong>
+                                </div>
+                                <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:95%;"></div></div>
+                            </div>
+                            <div class="metric-line mt-2">
+                                <div class="flex-between text-xs">
+                                    <span>Fotos verificadas de instalaciones</span>
+                                    <strong>90/100</strong>
+                                </div>
+                                <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:90%;"></div></div>
+                            </div>
+                            <div class="metric-line mt-2">
+                                <div class="flex-between text-xs">
+                                    <span>Expectativa vs. realidad de clientes</span>
+                                    <strong>98/100</strong>
+                                </div>
+                                <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:98%;"></div></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
-        </main>
 
+                <!-- GALERÍA DE FOTOS DE LA COCINA / INSTALACIONES (DARK KITCHENS) -->
+                <div class="card-inner-form mt-4">
+                    <div class="flex-between">
+                        <div>
+                            <h4>Fotos de la cocina / instalaciones</h4>
+                            <p class="text-subtle text-xs">Sube fotos reales de tu cocina. Las fotos deben verse claras y limpias.</p>
+                        </div>
+                        <button class="btn btn-outline btn-sm" onclick="simularSubidaFotoCocina()">+ Subir imágenes</button>
+                    </div>
+
+                    <div class="kitchen-photos-grid mt-3">
+                        <div class="kitchen-photo-card">
+                            <img src="https://images.unsplash.com/photo-1556910103-1c02745aae4d?auto=format&fit=crop&w=400&q=80" alt="Área de preparación">
+                            <span class="kitchen-caption">Área de preparación</span>
+                        </div>
+                        <div class="kitchen-photo-card">
+                            <img src="https://images.unsplash.com/photo-1581299894007-aaa50297cf16?auto=format&fit=crop&w=400&q=80" alt="Zona de cocción">
+                            <span class="kitchen-caption">Zona de cocción</span>
+                        </div>
+                        <div class="kitchen-photo-card">
+                            <img src="https://images.unsplash.com/photo-1590794056226-79ef3a8147e1?auto=format&fit=crop&w=400&q=80" alt="Almacenamiento">
+                            <span class="kitchen-caption">Almacenamiento e higiene</span>
+                        </div>
+                        <div class="kitchen-photo-card dropzone-card" onclick="simularSubidaFotoCocina()">
+                            <span class="dropzone-icon">📷</span>
+                            <small class="display-block">Subir nueva foto</small>
+                            <span class="text-xs text-subtle">JPG o PNG hasta 5MB</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 3.5 TAB: EVALUACIONES (EXPECTATIVA VS REALIDAD) -->
+            <section id="tabRestEvaluaciones" class="tab-desktop-view hidden">
+                <div class="desktop-section-header">
+                    <div>
+                        <h3>Evaluaciones de clientes</h3>
+                        <p class="text-subtle">Conoce la satisfacción comunitaria y el impacto en tu Índice de Transparencia.</p>
+                    </div>
+                </div>
+
+                <div class="ratings-cards-grid" id="listaEvaluacionesRestaurante">
+                    <!-- Render de opiniones -->
+                </div>
+            </section>
+
+        </main>
     </div>
 
-    <!-- MODAL CARRITO DE COMPRAS -->
-    <div id="modalCarrito" class="modal hidden">
-        <div class="modal-content" style="max-width:520px;">
-            <div class="modal-header">
-                <h3>🛒 Tu Carrito Nutricional Kalo</h3>
-                <button class="btn-close" onclick="cerrarModalCarrito()">&times;</button>
+    <!-- ==============================================================
+         4. VISTA REPARTIDOR (MOBILE-FIRST - TECLADO PIN)
+         ============================================================== -->
+    <div id="seccionRepartidor" class="contenedor-app-repartidor hidden">
+        <div class="smartphone-frame">
+            <div class="smartphone-screen">
+                <div class="status-bar-simulated">
+                    <span>09:41</span>
+                    <span>📶 5G 🔋 98%</span>
+                </div>
+
+                <div class="driver-app-header">
+                    <div>
+                        <small>App Repartidor Mobile-First</small>
+                        <h3>🛵 Kalo Delivery</h3>
+                    </div>
+                    <span class="status-dot-online">Online</span>
+                </div>
+
+                <div class="driver-content-scroll">
+                    <!-- Tarjeta de Pedido Asignado -->
+                    <div class="order-pickup-card">
+                        <div class="flex-between">
+                            <span class="badge-mini" id="repPedidoBadge">En Preparación</span>
+                            <strong id="repCodigoPedido">KALO-2026-0001</strong>
+                        </div>
+                        <h4 id="repClienteNombre" class="mt-2">Cliente: Andrea Gómez</h4>
+                        <p id="repDireccion" class="text-subtle text-xs">📍 Av. Brasil 2950, Valparaíso</p>
+                        <p id="repTotal" class="price-highlight mt-1">Total: $10.480</p>
+
+                        <button id="btnRepAceptar" class="btn btn-secondary btn-block mt-3" onclick="repartidorAceptarPedido()">
+                            🛵 Aceptar Reparto
+                        </button>
+                        <div class="order-divider"></div>
+                        <span class="order-alert-box">⚠️ Solicita el PIN de 4 dígitos al cliente para validar la entrega</span>
+                    </div>
+
+                    <!-- Teclado Numérico Interactivo (PIN Pad) -->
+                    <div class="pin-validation-box">
+                        <label>Ingresar PIN del Cliente</label>
+                        <div class="pin-display">
+                            <input type="text" id="repInputPin" maxlength="4" placeholder="----" readonly>
+                        </div>
+
+                        <div class="keypad-grid">
+                            <button type="button" class="key-btn" onclick="teclearPinRepartidor('1')">1</button>
+                            <button type="button" class="key-btn" onclick="teclearPinRepartidor('2')">2</button>
+                            <button type="button" class="key-btn" onclick="teclearPinRepartidor('3')">3</button>
+                            <button type="button" class="key-btn" onclick="teclearPinRepartidor('4')">4</button>
+                            <button type="button" class="key-btn" onclick="teclearPinRepartidor('5')">5</button>
+                            <button type="button" class="key-btn" onclick="teclearPinRepartidor('6')">6</button>
+                            <button type="button" class="key-btn" onclick="teclearPinRepartidor('7')">7</button>
+                            <button type="button" class="key-btn" onclick="teclearPinRepartidor('8')">8</button>
+                            <button type="button" class="key-btn" onclick="teclearPinRepartidor('9')">9</button>
+                            <button type="button" class="key-btn key-action" onclick="borrarPinRepartidor()">⌫</button>
+                            <button type="button" class="key-btn" onclick="teclearPinRepartidor('0')">0</button>
+                            <button type="button" class="key-btn key-clear" onclick="limpiarPinRepartidor()">C</button>
+                        </div>
+
+                        <button class="btn btn-primary btn-block mt-3" onclick="enviarValidacionPinRepartidor()">
+                            ✓ Confirmar Entrega
+                        </button>
+                    </div>
+
+                    <button class="btn btn-outline btn-block mt-3" onclick="cerrarSesion()">Cerrar sesión</button>
+                </div>
             </div>
-            <div class="modal-body">
-                <div id="itemsCarritoLista" class="carrito-items-lista">
-                    <!-- Render de items agregados -->
+        </div>
+    </div>
+
+    <!-- ==============================================================
+         MODALES GLOBALES
+         ============================================================== -->
+
+    <!-- MODAL 1: FICHA DETALLE DEL PLATILLO (MOCKUP 2.5) -->
+    <div id="modalFichaPlatillo" class="modal-overlay hidden">
+        <div class="modal-sheet-content">
+            <div class="modal-sheet-nav">
+                <button class="btn-icon-back" onclick="cerrarModalFichaPlatillo()">←</button>
+                <span class="sheet-nav-title">Tu platillo</span>
+                <span class="logo-text-mini">kalo<span class="dot-orange">•</span></span>
+            </div>
+
+            <div class="sheet-scroll-body">
+                <div class="sheet-hero-img-wrap">
+                    <img src="" alt="Plato" id="sheetPlatoImg" class="sheet-hero-img">
+                    <span class="sheet-badge-transp">✓ Relata 100% transparente</span>
                 </div>
 
-                <div class="carrito-resumen-box">
-                    <div class="resumen-linea">
-                        <span>Calorías Totales Acumuladas:</span>
-                        <strong id="carritoTotalKcal" style="color:#b91c1c;">0 kcal</strong>
+                <div class="sheet-content-padding">
+                    <h2 id="sheetPlatoNombre">Bowl de salmón y quinoa</h2>
+                    <div class="sheet-rest-meta">
+                        <span id="sheetPlatoRestaurante">Verde Vivo</span> · 
+                        <span class="text-green-strong" id="sheetPlatoTransp">Índice de Transparencia 100/100</span>
                     </div>
-                    <div class="resumen-linea" style="font-size:17px; margin-top:8px;">
-                        <span>Total a Pagar:</span>
-                        <strong id="carritoTotalPrecio" style="color:#059669;">$0</strong>
+                    <div class="sheet-price-tag" id="sheetPlatoPrecio">$8.990</div>
+
+                    <!-- Gráfico / Caja Visual de Macronutrientes -->
+                    <div class="nutrition-donut-card mt-3">
+                        <span class="text-xs uppercase text-subtle">Lo que aporta tu bowl (1 porción)</span>
+                        <div class="nutrition-circle-row mt-2">
+                            <div class="macro-circle-center">
+                                <span class="circle-cal-num" id="sheetPlatoKcal">520</span>
+                                <small>Kcal totales</small>
+                            </div>
+                            <div class="macro-lines-right">
+                                <div class="macro-stat-item">
+                                    <span class="dot-macro dot-prot">●</span>
+                                    <span>Proteínas</span>
+                                    <strong id="sheetPlatoProt">38 g</strong>
+                                </div>
+                                <div class="macro-stat-item">
+                                    <span class="dot-macro dot-carb">●</span>
+                                    <span>Carbohidratos</span>
+                                    <strong id="sheetPlatoCarb">45 g</strong>
+                                </div>
+                                <div class="macro-stat-item">
+                                    <span class="dot-macro dot-gras">●</span>
+                                    <span>Grasas</span>
+                                    <strong id="sheetPlatoGras">18 g</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sección: Ingredientes sin letra chica -->
+                    <div class="ingredients-clean-section mt-4">
+                        <div class="section-badge-clean">🌾 Conoce ingredientes y conoce la cocina</div>
+                        <h4>Ingredientes, sin letra chica</h4>
+                        <small class="text-subtle">Cantidades por porción · Método de cocción</small>
+
+                        <div class="ingredients-list-pills mt-2" id="sheetListaIngredientes">
+                            <div class="ing-item-line"><span>Salmón 150 g</span> <small>a la plancha</small></div>
+                            <div class="ing-item-line"><span>Quinoa 100 g</span> <small>cocida al vapor</small></div>
+                            <div class="ing-item-line"><span>Palta 50 g</span> <small>fresca en láminas</small></div>
+                            <div class="ing-item-line"><span>Pepino y mix verde 80 g</span> <small>fresco</small></div>
+                        </div>
                     </div>
                 </div>
+            </div>
 
-                <button class="btn btn-primary btn-block" style="margin-top:16px; padding:12px;" onclick="confirmarCompraCarrito()">
-                    💳 Confirmar y Pagar Pedido
+            <!-- Sticky Bottom en Ficha -->
+            <div class="sheet-sticky-footer">
+                <div class="qty-counter-row">
+                    <button class="btn-qty" onclick="modificarCantidadFicha(-1)">-</button>
+                    <span id="sheetCantidadNum" class="qty-num">1</span>
+                    <button class="btn-qty" onclick="modificarCantidadFicha(1)">+</button>
+                </div>
+                <button class="btn btn-primary btn-flex-grow" onclick="agregarAlCarritoDesdeFicha()">
+                    Agregar al carrito · <span id="sheetBtnPrecioTotal">$8.990</span>
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- MODAL DE DEMOSTRACIÓN NoSQL (Requisito 20 pts de Consultas para el Profesor) -->
-    <div id="modalNoSQL" class="modal hidden">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>🍃 Consola de Consultas MongoDB Atlas (MQL)</h3>
-                <button class="btn-close" onclick="cerrarModalNoSQL()">&times;</button>
+    <!-- MODAL 2: FILTROS AVANZADOS "A TU MEDIDA" (MOCKUP 2.3) -->
+    <div id="modalFiltrosAvanzados" class="modal-overlay hidden">
+        <div class="modal-sheet-content" style="max-height:85vh;">
+            <div class="modal-sheet-nav">
+                <span class="sheet-nav-title">A tu medida</span>
+                <button class="btn-close-sheet" onclick="cerrarModalFiltrosAvanzados()">✕</button>
             </div>
-            <div class="modal-body">
-                <p>Ejecuta en tiempo real los requerimientos NoSQL de la rúbrica sobre la base de datos Atlas:</p>
-                
-                <div class="nosql-actions-grid">
+            <div class="sheet-content-padding">
+                <p class="text-subtle text-xs">Elige lo que le hace bien a tu día.</p>
+
+                <!-- Slider Calorías -->
+                <div class="form-group mt-3">
+                    <div class="flex-between">
+                        <label>Máximo de calorías</label>
+                        <strong id="lblValFiltroKcal">600 kcal</strong>
+                    </div>
+                    <input type="range" min="300" max="1000" step="50" value="600" id="rangeFiltroKcal" oninput="actualizarLabelKcal(this.value)">
+                </div>
+
+                <!-- Checkboxes de Macros -->
+                <div class="checkbox-options-list mt-3">
+                    <label class="custom-check-row">
+                        <input type="checkbox" id="chkFiltroAltoProteina" checked>
+                        <span>Alto en proteínas (≥ 30g)</span>
+                    </label>
+                    <label class="custom-check-row">
+                        <input type="checkbox" id="chkFiltroBajoCarbos">
+                        <span>Bajo en carbohidratos (≤ 35g)</span>
+                    </label>
+                </div>
+
+                <!-- Slider Precio -->
+                <div class="form-group mt-3">
+                    <div class="flex-between">
+                        <label>Precio máximo</label>
+                        <strong id="lblValFiltroPrecio">$10.000</strong>
+                    </div>
+                    <input type="range" min="4000" max="15000" step="500" value="10000" id="rangeFiltroPrecio" oninput="actualizarLabelPrecio(this.value)">
+                </div>
+
+                <!-- Switch 100% Transparencia -->
+                <div class="switch-toggle-row mt-3">
+                    <span>Solo restaurantes con 100% de transparencia</span>
+                    <label class="switch">
+                        <input type="checkbox" id="switchSolo100Transp" checked>
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+
+                <div class="sheet-buttons-two-cols mt-4">
+                    <button class="btn btn-outline" onclick="limpiarTodosFiltros()">Limpiar</button>
+                    <button class="btn btn-primary" onclick="aplicarFiltrosAvanzados()">Ver resultados</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 3: EVALUAR PEDIDO (MOCKUP 3.4 Y 3.5) -->
+    <div id="modalEvaluacionPedido" class="modal-overlay hidden">
+        <div class="modal-sheet-content">
+            <div class="modal-sheet-nav">
+                <button class="btn-icon-back" onclick="cerrarModalEvaluacion()">←</button>
+                <span class="sheet-nav-title">Evaluar pedido</span>
+                <span class="logo-text-mini">kalo<span class="dot-orange">•</span></span>
+            </div>
+
+            <div class="sheet-content-padding" id="formEvaluacionBody">
+                <div class="eval-dish-summary">
+                    <img src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=100&q=80" alt="Plato" class="dish-thumb-sm">
+                    <div>
+                        <strong id="evalNombreRestaurante">Verde Vivo</strong>
+                        <small class="display-block text-subtle">Pedido #1042 · Bowl de salmón y quinoa</small>
+                    </div>
+                </div>
+
+                <h4 class="mt-3 text-center">¿Qué tal estuvo tu pedido?</h4>
+                <div class="stars-selector-row" id="starsCalificacionGeneral">
+                    <span class="star-btn active" onclick="seleccionarEstrellas('general', 1)">★</span>
+                    <span class="star-btn active" onclick="seleccionarEstrellas('general', 2)">★</span>
+                    <span class="star-btn active" onclick="seleccionarEstrellas('general', 3)">★</span>
+                    <span class="star-btn active" onclick="seleccionarEstrellas('general', 4)">★</span>
+                    <span class="star-btn active" onclick="seleccionarEstrellas('general', 5)">★</span>
+                </div>
+                <small class="text-subtle text-center display-block text-xs">1 = Muy malo · 5 = Excelente</small>
+
+                <!-- Criterios Específicos de Transparencia -->
+                <div class="eval-criterios-box mt-3">
+                    <div class="criterio-line">
+                        <span>Similitud con la foto</span>
+                        <div class="mini-stars">⭐⭐⭐⭐⭐</div>
+                    </div>
+                    <div class="criterio-line mt-2">
+                        <span>Gramaje / porción real</span>
+                        <div class="mini-stars">⭐⭐⭐⭐☆</div>
+                    </div>
+                    <div class="criterio-line mt-2">
+                        <span>Velocidad de preparación</span>
+                        <div class="mini-stars">⭐⭐⭐⭐⭐</div>
+                    </div>
+                </div>
+
+                <div class="form-group mt-3">
+                    <label>Comentario (opcional)</label>
+                    <textarea id="evalComentario" rows="3" placeholder="Cuéntanos un poco más... ¿Tu bowl fue como esperabas?"></textarea>
+                </div>
+
+                <div class="alert-shield-transp mt-2">
+                    <span>🛡️ Tu opinión actualiza el Índice de Transparencia del restaurante.</span>
+                </div>
+
+                <button class="btn btn-primary btn-block mt-3" onclick="enviarEvaluacionTransparencia()">Enviar evaluación</button>
+            </div>
+
+            <!-- Pantalla Confirmación de Evaluación Enviada -->
+            <div class="sheet-content-padding text-center hidden" id="boxEvaluacionConfirmada">
+                <div class="success-icon-huge">✓</div>
+                <h3>¡Gracias! Tu evaluación fue registrada</h3>
+                <p class="text-subtle text-xs mt-1">Ayudas a que más personas sepan qué esperar antes de pedir.</p>
+
+                <div class="eval-card-sent mt-3">
+                    <strong>Verde Vivo · Pedido #1042</strong>
+                    <div class="mini-stars mt-1">⭐⭐⭐⭐⭐</div>
+                    <small class="text-green-strong display-block mt-1">Calificación general · Excelente</small>
+                </div>
+
+                <button class="btn btn-primary btn-block mt-4" onclick="cerrarModalEvaluacionYVolver()">Volver a mis pedidos</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 4: PLANES NUTRICIONALES (MOCKUP 4.3 Y 4.4) -->
+    <div id="modalPlanesNutricionales" class="modal-overlay hidden">
+        <div class="modal-sheet-content">
+            <div class="modal-sheet-nav">
+                <button class="btn-icon-back" onclick="cerrarVistaPlanes()">←</button>
+                <span class="sheet-nav-title">Planes nutricionales</span>
+                <span class="logo-text-mini">kalo<span class="dot-orange">•</span></span>
+            </div>
+
+            <div class="sheet-content-padding">
+                <small class="text-subtle" id="lblPlanesUserMeta">Andrea · IMC 25,2 · Meta 1.800 kcal</small>
+                <p class="text-xs text-subtle mt-1">Sugerencia según tu perfil. El IMC es orientativo, no es una prescripción médica.</p>
+
+                <div class="plans-list-container mt-3">
+                    <!-- Plan 1 -->
+                    <div class="plan-card featured">
+                        <span class="plan-badge-rec">🌱 Recomendado para ti</span>
+                        <h4>Definición Muscular</h4>
+                        <div class="plan-calories">1.800 kcal/día</div>
+                        <p class="text-subtle text-xs">Reduce grasa y preserva masa muscular con control riguroso de carbohidratos.</p>
+                        <div class="flex-between mt-3">
+                            <strong class="price-lg">$89.990 <small class="text-xs text-subtle">CLP / mes</small></strong>
+                            <button class="btn btn-primary btn-sm" onclick="abrirConfirmarContratarPlan('Definición Muscular', 1800, 89990)">Contratar</button>
+                        </div>
+                    </div>
+
+                    <!-- Plan 2 -->
+                    <div class="plan-card mt-3">
+                        <h4>Volumen Limpio</h4>
+                        <div class="plan-calories">2.600 kcal/día</div>
+                        <p class="text-subtle text-xs">Ganar masa muscular de forma gradual y limpia sin acumular grasa excesiva.</p>
+                        <div class="flex-between mt-3">
+                            <strong class="price-lg">$109.990 <small class="text-xs text-subtle">CLP / mes</small></strong>
+                            <button class="btn btn-outline btn-sm" onclick="abrirConfirmarContratarPlan('Volumen Limpio', 2600, 109990)">Contratar</button>
+                        </div>
+                    </div>
+
+                    <!-- Plan 3 -->
+                    <div class="plan-card mt-3">
+                        <h4>Salud y Vitalidad</h4>
+                        <div class="plan-calories">2.000 kcal/día</div>
+                        <p class="text-subtle text-xs">Mantener una alimentación equilibrada, rica en antioxidantes y fibra.</p>
+                        <div class="flex-between mt-3">
+                            <strong class="price-lg">$94.990 <small class="text-xs text-subtle">CLP / mes</small></strong>
+                            <button class="btn btn-outline btn-sm" onclick="abrirConfirmarContratarPlan('Salud y Vitalidad', 2000, 94990)">Contratar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 5: CONFIRMAR CONTRATAR PLAN -->
+    <div id="modalConfirmarPlan" class="modal-overlay hidden">
+        <div class="modal-dialog-card">
+            <span class="dialog-icon">🌱</span>
+            <h3>¿Contratar este plan?</h3>
+            <p class="text-subtle text-xs">Revisa el resumen antes de confirmar:</p>
+
+            <div class="dialog-summary-box mt-2">
+                <strong id="confPlanNombre">Definición Muscular</strong>
+                <div class="text-xs text-subtle" id="confPlanKcal">1.800 kcal/día</div>
+                <strong class="price-highlight mt-1 display-block" id="confPlanPrecio">$89.990 CLP / mes</strong>
+            </div>
+
+            <div class="dialog-actions-row mt-3">
+                <button class="btn btn-outline" onclick="cerrarConfirmarPlan()">Cancelar</button>
+                <button class="btn btn-primary" onclick="ejecutarContratarPlan()">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 6: CONFIRMAR ELIMINAR DATOS (GDPR / LEY 21.713) -->
+    <div id="modalEliminarDatos" class="modal-overlay hidden">
+        <div class="modal-dialog-card">
+            <span class="dialog-icon-danger">🗑️</span>
+            <h3>¿Eliminar mis datos?</h3>
+            <p class="text-subtle text-xs">Esta acción borrará permanentemente tu perfil, tu historial y tus datos de salud de MongoDB Atlas. No se puede deshacer.</p>
+
+            <div class="dialog-actions-row mt-4">
+                <button class="btn btn-outline" onclick="cerrarModalEliminarDatos()">Cancelar</button>
+                <button class="btn btn-danger" onclick="confirmarEliminarDatos()">Eliminar definitivamente</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 7: CONFIRMAR SALIDA DE PEDIDO (RESTAURANTE -> EN CAMINO CON PIN) -->
+    <div id="modalConfirmarSalidaPedido" class="modal-overlay hidden">
+        <div class="modal-dialog-card">
+            <span class="dialog-icon">🛵</span>
+            <h3 id="lblConfSalidaTitulo">¿El pedido #1042 está listo para salir?</h3>
+            <p class="text-subtle text-xs">Se generará un PIN de seguridad que solo verá el cliente. El repartidor debe validarlo para cerrar la entrega.</p>
+
+            <div class="form-group mt-3 text-left">
+                <label>Repartidor Asignado:</label>
+                <select id="selectRepartidorSalida">
+                    <option value="Carlos Repartidor">Carlos Repartidor Express (Motocicleta)</option>
+                    <option value="Juan P.">Juan P. (Moto - 12 min)</option>
+                </select>
+            </div>
+
+            <div class="dialog-actions-row mt-3">
+                <button class="btn btn-outline" onclick="cerrarModalSalidaPedido()">Cancelar</button>
+                <button class="btn btn-primary" onclick="confirmarDespachoPedido()">Confirmar salida</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 8: CONSOLA NoSQL (EVALUACIÓN DOCENTE MQL) -->
+    <div id="modalNoSQL" class="modal-overlay hidden">
+        <div class="modal-sheet-content" style="max-width:760px; max-height:90vh;">
+            <div class="modal-sheet-nav">
+                <span class="sheet-nav-title">🍃 Consola de Consultas MongoDB Atlas (MQL)</span>
+                <button class="btn-close-sheet" onclick="cerrarModalNoSQL()">✕</button>
+            </div>
+            <div class="sheet-content-padding">
+                <p class="text-subtle text-xs">Ejecuta en vivo los 4 requerimientos de la rúbrica NoSQL sobre la base de datos en la nube:</p>
+
+                <div class="nosql-actions-grid mt-2">
                     <button class="btn-mql btn-mql-lookup" onclick="ejecutarConsultaMQL('/api/mongo/platillos-con-restaurante', 'GET')">
                         1. $lookup (JOIN NoSQL) Platillos ↔ Restaurante
                     </button>
@@ -374,7 +1505,7 @@
                     </button>
                 </div>
 
-                <div class="console-output">
+                <div class="console-output mt-3">
                     <div class="console-header">
                         <span id="mqlOperacionTag" class="console-tag">Operación: Ninguna</span>
                         <span id="mqlStatusTag" class="console-status">Estado: Listo</span>
@@ -392,6 +1523,7 @@
         </div>
     </div>
 
+    <!-- Scripts de la aplicación -->
     <script src="app.js"></script>
 </body>
 </html>

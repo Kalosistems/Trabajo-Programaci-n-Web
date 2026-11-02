@@ -6,6 +6,12 @@ const MacronutrientesSchema = new mongoose.Schema({
     grasas_g: { type: Number, default: 0 }
 }, { _id: false });
 
+const IngredienteDetalleSchema = new mongoose.Schema({
+    nombre: { type: String, required: true },
+    cantidad_g: { type: Number, default: 0 },
+    metodo_coccion: { type: String, default: 'Fresco' }
+}, { _id: false });
+
 const PlatilloSchema = new mongoose.Schema({
     nombre: {
         type: String,
@@ -15,6 +21,15 @@ const PlatilloSchema = new mongoose.Schema({
     descripcion: {
         type: String,
         default: 'Plato nutritivo Kalo'
+    },
+    categoria: {
+        type: String,
+        enum: ['Desayuno', 'Almuerzo', 'Cena', 'Snack'],
+        default: 'Almuerzo'
+    },
+    imagen_url: {
+        type: String,
+        default: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80'
     },
     precio: {
         type: Number,
@@ -30,6 +45,7 @@ const PlatilloSchema = new mongoose.Schema({
         type: MacronutrientesSchema,
         default: () => ({ proteinas_g: 0, carbohidratos_g: 0, grasas_g: 0 })
     },
+    ingredientes: [IngredienteDetalleSchema],
     peso_porcion_g: {
         type: Number,
         default: null // Gramaje exacto de la porción servida
@@ -46,12 +62,11 @@ const PlatilloSchema = new mongoose.Schema({
         type: Number,
         min: 1,
         max: 100,
-        default: 50
+        default: 85
     },
     restaurante_id: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Restaurante',
-        required: true
+        ref: 'Restaurante'
     },
     activo: {
         type: Boolean,

@@ -37,8 +37,8 @@ const PedidoSchema = new mongoose.Schema({
     },
     estado: { 
         type: String, 
-        enum: ['Pendiente', 'En Preparación', 'En Camino', 'Entregado', 'Cancelado'],
-        default: 'Pendiente'
+        enum: ['Pendiente', 'Pagado', 'En Preparación', 'En Camino', 'Entregado', 'Cancelado'],
+        default: 'Pagado'
     },
     pin_seguridad: { 
         type: String, 
@@ -51,6 +51,14 @@ const PedidoSchema = new mongoose.Schema({
         min: 1, 
         max: 5, 
         default: 5 
+    },
+    evaluacion: {
+        similitud_foto: { type: Number, min: 1, max: 5 },
+        gramaje_porcion: { type: Number, min: 1, max: 5 },
+        velocidad_prep: { type: Number, min: 1, max: 5 },
+        calificacion_general: { type: Number, min: 1, max: 5 },
+        comentario: { type: String, default: '' },
+        fecha_evaluacion: { type: Date }
     },
     cliente: { 
         type: ClienteRefSchema, 

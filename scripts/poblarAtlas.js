@@ -1,4 +1,10 @@
-require('dotenv').config();
+const path = require('path');
+const fs = require('fs');
+const rootEnv = path.join(__dirname, '..', '.env');
+const altEnv = path.join(__dirname, '..', 'env');
+if (fs.existsSync(rootEnv)) require('dotenv').config({ path: rootEnv });
+else if (fs.existsSync(altEnv)) require('dotenv').config({ path: altEnv });
+else require('dotenv').config();
 const { conectarMongo } = require('../src/config/mongo');
 const Usuario = require('../src/Modelos/mongo/Usuario');
 const PlanNutricional = require('../src/Modelos/mongo/PlanNutricional');

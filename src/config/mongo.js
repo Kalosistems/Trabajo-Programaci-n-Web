@@ -6,17 +6,26 @@ try {
 const mongoose = require('mongoose');
 
 const conectarMongo = async () => {
-    const mongoUri = process.env.MONGO_URI || process.env.MONGODB_URI;
+    let mongoUri = process.env.MONGO_URI || process.env.MONGODB_URI;
     if (!mongoUri) {
         console.error('❌ ERROR CRÍTICO: La variable MONGO_URI no está configurada en las Variables de Entorno.');
         return;
+    }
+
+    mongoUri = mongoUri.trim();
+    // Asegurar que especifique la base de datos test
+    if (mongoUri.endsWith('.mongodb.net/')) {
+        mongoUri += 'test?retryWrites=true&w=majority';
+    } else if (mongoUri.endsWith('.mongodb.net')) {
+        mongoUri += '/test?retryWrites=true&w=majority';
     }
 
     try {
         await mongoose.connect(mongoUri, {
             serverSelectionTimeoutMS: 8000
         });
-        console.log('✅ ¡Conexión exitosa a MongoDB Atlas en la nube!');
+        const dbName = mongoose.connection.name || 'test';
+        console.log(`✅ ¡Conexión exitosa a MongoDB Atlas en la nube! Base de datos activa: [${dbName}]`);
     } catch (error) {
         console.error('❌ Error conectando a MongoDB Atlas:', error.message);
     }

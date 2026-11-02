@@ -1,761 +1,2335 @@
-/* ESTILOS GLOBALES KALO (ETAPA 2 - NoSQL) */
+/* ==========================================================================
+   KALO - PLATAFORMA DE NUTRICIÓN Y DELIVERY TRANSPARENTE
+   HOJA DE ESTILOS BASADA EN LOS MOCKUPS OFICIALES (ICI324 / WEB 2026)
+   ========================================================================== */
+
 :root {
-    --primary: #10b981;
-    --primary-dark: #059669;
-    --primary-light: #d1fae5;
-    --secondary: #3b82f6;
-    --accent: #f59e0b;
-    --danger: #ef4444;
-    --dark: #1f2937;
-    --gray-bg: #f3f4f6;
-    --card-bg: #ffffff;
-    --text-main: #111827;
-    --text-muted: #6b7280;
-    --border: #e5e7eb;
-    --radius: 12px;
-    --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --kalo-green-primary: #1b5e3a;      /* Verde bosque profundo de la marca */
+    --kalo-green-hover: #134e2c;
+    --kalo-green-light: #e8f5e9;        /* Tinte menta suave de fondos */
+    --kalo-green-accent: #059669;       /* Verde esmeralda de badges y éxito */
+    --kalo-orange-dot: #f59e0b;         /* Naranja del punto de marca y acentos */
+    --kalo-amber-bg: #fffbeb;           /* Fondo caja PIN */
+    --kalo-amber-border: #fcd34d;       /* Borde caja PIN */
+    --kalo-red-danger: #e53935;         /* Alertas y eliminar datos */
+    --kalo-red-light: #fef2f2;
+    --kalo-bg: #f3f4f6;                 /* Fondo global de la app */
+    --kalo-card-bg: #ffffff;
+    --kalo-text-main: #111827;          /* Texto principal oscuro */
+    --kalo-text-subtle: #6b7280;        /* Texto secundario gris */
+    --kalo-border: #e5e7eb;
+    --kalo-radius-sm: 8px;
+    --kalo-radius-md: 14px;
+    --kalo-radius-lg: 22px;
+    --kalo-radius-pill: 9999px;
+    --kalo-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+    --kalo-shadow-md: 0 4px 14px rgba(0, 0, 0, 0.08);
+    --kalo-shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.12);
 }
 
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    font-family: 'Poppins', sans-serif;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    -webkit-tap-highlight-color: transparent;
 }
 
 body {
-    background-color: var(--gray-bg);
-    color: var(--text-main);
+    background-color: var(--kalo-bg);
+    color: var(--kalo-text-main);
+    line-height: 1.5;
     min-height: 100vh;
-}
-
-.hidden {
-    display: none !important;
-}
-
-/* BOTONES GENERALES */
-.btn {
-    padding: 10px 18px;
-    border-radius: 8px;
-    font-weight: 500;
-    cursor: pointer;
-    border: none;
-    transition: all 0.2s ease;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    font-size: 14px;
-}
-
-.btn-primary { background: var(--primary); color: white; }
-.btn-primary:hover { background: var(--primary-dark); }
-.btn-secondary { background: #e0e7ff; color: #4338ca; }
-.btn-secondary:hover { background: #c7d2fe; }
-.btn-success { background: #10b981; color: white; }
-.btn-success:hover { background: #059669; }
-.btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-main); }
-.btn-outline:hover { background: #f3f4f6; }
-.btn-nosql { background: #064e3b; color: #a7f3d0; border: 1px solid #10b981; }
-.btn-nosql:hover { background: #065f46; color: white; }
-.btn-carrito { background: #fef3c7; color: #92400e; border: 1px solid #f59e0b; font-weight:600; }
-.btn-carrito:hover { background: #fde68a; }
-.btn-block { width: 100%; }
-.btn-sm { padding: 6px 12px; font-size: 12px; }
-
-.carrito-badge {
-    background: #dc2626;
-    color: white;
-    font-size: 11px;
-    border-radius: 12px;
-    padding: 2px 7px;
-    margin-left: 4px;
-}
-
-/* 0. PANTALLA LOGIN */
-.pantalla-login {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-    padding: 20px;
-    background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%);
-}
-
-.login-card {
-    background: white;
-    width: 100%;
-    max-width: 440px;
-    padding: 36px 30px;
-    border-radius: var(--radius);
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-    border: 1px solid var(--border);
-}
-
-.brand {
-    text-align: center;
-    margin-bottom: 24px;
-}
-
-.brand-badge {
-    background: var(--primary-light);
-    color: var(--primary-dark);
-    font-size: 11px;
-    font-weight: 600;
-    padding: 4px 10px;
-    border-radius: 20px;
-    text-transform: uppercase;
-}
-
-.brand h1 {
-    font-size: 28px;
-    color: var(--primary-dark);
-    margin-top: 8px;
-}
-
-.brand p {
-    font-size: 13px;
-    color: var(--text-muted);
-}
-
-.form-group {
-    margin-bottom: 14px;
-}
-
-.form-group label {
-    display: block;
-    font-size: 13px;
-    font-weight: 500;
-    margin-bottom: 6px;
-}
-
-.form-group input {
-    width: 100%;
-    padding: 10px 14px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    font-size: 14px;
-    outline: none;
-    transition: border-color 0.2s;
-}
-
-.form-group input:focus {
-    border-color: var(--primary);
-}
-
-.login-demo-bar {
-    margin-top: 24px;
-    padding-top: 18px;
-    border-top: 1px solid var(--border);
-}
-
-.demo-title {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text-muted);
-    margin-bottom: 10px;
-    text-align: center;
-}
-
-.demo-buttons {
     display: flex;
     flex-direction: column;
+}
+
+/* ==========================================================================
+   BARRA FLOTANTE DE DEMO (ACCESOS RÁPIDOS & CONSOLA NoSQL)
+   ========================================================================== */
+.demo-top-bar {
+    background-color: #111827;
+    color: #ffffff;
+    padding: 8px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    position: sticky;
+    top: 0;
+    z-index: 9999;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.demo-brand {
+    display: flex;
+    align-items: center;
     gap: 8px;
+}
+
+.logo-text {
+    font-weight: 800;
+    font-size: 18px;
+    letter-spacing: -0.5px;
+    color: var(--kalo-green-primary);
+}
+
+.demo-brand .logo-text {
+    color: #ffffff;
+}
+
+.logo-text-large {
+    font-weight: 800;
+    font-size: 26px;
+    letter-spacing: -0.8px;
+    color: var(--kalo-green-primary);
+}
+
+.logo-text-mini {
+    font-weight: 800;
+    font-size: 15px;
+    color: var(--kalo-green-primary);
+}
+
+.dot-orange {
+    color: var(--kalo-orange-dot);
+}
+
+.demo-tag {
+    background: rgba(255, 255, 255, 0.15);
+    padding: 2px 8px;
+    border-radius: var(--kalo-radius-pill);
+    font-size: 11px;
+    color: #93c5fd;
+}
+
+.demo-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
 }
 
 .btn-demo {
-    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+    padding: 4px 10px;
+    border-radius: var(--kalo-radius-sm);
     font-size: 12px;
-    border-radius: 6px;
-    border: 1px solid var(--border);
-    background: #f9fafb;
-    text-align: left;
     cursor: pointer;
     font-weight: 500;
-    transition: all 0.2s;
+    transition: background 0.2s;
 }
 
 .btn-demo:hover {
-    background: #f3f4f6;
-    border-color: var(--primary);
+    background: rgba(255, 255, 255, 0.25);
 }
 
-/* NAVBAR */
-.navbar {
-    background: white;
-    padding: 14px 28px;
+.btn-demo-mql {
+    background: #059669;
+    border-color: #059669;
+    color: white;
+}
+
+.btn-demo-reset {
+    background: #374151;
+    color: #d1d5db;
+}
+
+/* ==========================================================================
+   SIMULADOR SMARTPHONE (PARA FLUJOS MOBILE CLIENTE & ONBOARDING)
+   ========================================================================== */
+.contenedor-onboarding,
+.contenedor-app-cliente,
+.contenedor-app-repartidor {
     display: flex;
-    justify-content: space-between;
+    justify-content: center;
     align-items: center;
-    border-bottom: 1px solid var(--border);
-    position: sticky;
-    top: 0;
-    z-index: 10;
+    padding: 20px 10px;
+    min-height: calc(100vh - 45px);
 }
 
-.nav-brand {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.nav-brand h2 {
-    color: var(--primary-dark);
-    font-size: 20px;
-}
-
-.badge {
-    font-size: 12px;
-    font-weight: 600;
-    padding: 4px 10px;
-    border-radius: 12px;
-    background: var(--primary-light);
-    color: var(--primary-dark);
-}
-
-.badge-success { background: #dcfce7; color: #15803d; }
-
-.nav-user-info {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-}
-
-#nombreUsuarioHeader {
-    font-size: 14px;
-    font-weight: 500;
-}
-
-/* CONTENEDOR Y LAYOUT */
-.container {
-    max-width: 1100px;
-    margin: 24px auto;
-    padding: 0 20px;
-}
-
-/* 1. VISTA CLIENTE */
-.biometric-banner {
-    background: white;
-    padding: 20px 24px;
-    border-radius: var(--radius);
-    border: 1px solid var(--border);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 24px;
-    box-shadow: var(--shadow);
-}
-
-.bio-stats {
-    display: flex;
-    gap: 14px;
-}
-
-.bio-pill {
-    background: var(--gray-bg);
-    padding: 8px 16px;
-    border-radius: 8px;
-    text-align: center;
-}
-
-.bio-label {
-    display: block;
-    font-size: 11px;
-    color: var(--text-muted);
-}
-
-.imc-highlight {
-    color: var(--primary-dark);
-}
-
-.seccion-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 16px;
-}
-
-.seccion-header h3 {
-    font-size: 18px;
-    color: var(--dark);
-}
-
-.seccion-header p {
-    font-size: 13px;
-    color: var(--text-muted);
-}
-
-.filtro-calorias select {
-    padding: 6px 12px;
-    border-radius: 6px;
-    border: 1px solid var(--border);
-    font-size: 13px;
-}
-
-.seccion-pedidos {
-    margin-bottom: 28px;
-}
-
-.pedidos-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 16px;
-}
-
-.pedido-card {
-    background: white;
-    border-radius: var(--radius);
-    border: 1px solid var(--border);
-    padding: 18px;
-    box-shadow: var(--shadow);
+.smartphone-frame {
+    width: 100%;
+    max-width: 412px;
+    height: 840px;
+    background: #ffffff;
+    border-radius: 40px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.15), 0 0 0 10px #1f2937;
     position: relative;
-}
-
-.pin-badge-card {
-    background: #fef3c7;
-    color: #92400e;
-    border: 1px dashed #f59e0b;
-    padding: 10px;
-    border-radius: 8px;
-    text-align: center;
-    margin: 12px 0;
-}
-
-.pin-badge-card strong {
-    font-size: 22px;
-    letter-spacing: 4px;
-    display: block;
-}
-
-.platillos-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 20px;
-}
-
-.platillo-card {
-    background: white;
-    border-radius: var(--radius);
-    border: 1px solid var(--border);
-    padding: 20px;
-    box-shadow: var(--shadow);
+    overflow: hidden;
     display: flex;
     flex-direction: column;
+}
+
+.smartphone-screen {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    position: relative;
+    background: #ffffff;
+}
+
+.status-bar-simulated {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 24px 4px 24px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--kalo-text-main);
+    background: #ffffff;
+    flex-shrink: 0;
+}
+
+/* ==========================================================================
+   ESTILOS COMUNES: BOTONES, INPUTS Y TIPOGRAFÍA
+   ========================================================================== */
+h2 {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.4px;
+    line-height: 1.25;
+}
+
+h3 {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+}
+
+h4 {
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.text-xs { font-size: 11px; }
+.text-subtle { color: var(--kalo-text-subtle); }
+.text-green-strong { color: var(--kalo-green-accent); font-weight: 600; }
+.display-block { display: block; }
+.flex-between { display: flex; justify-content: space-between; align-items: center; }
+.mt-1 { margin-top: 4px; }
+.mt-2 { margin-top: 8px; }
+.mt-3 { margin-top: 14px; }
+.mt-4 { margin-top: 20px; }
+.bold { font-weight: 700; }
+.hidden { display: none !important; }
+
+/* Botones principales */
+.btn {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 18px;
+    border-radius: var(--kalo-radius-pill);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s ease;
+    text-decoration: none;
+}
+
+.btn-primary {
+    background-color: var(--kalo-green-primary);
+    color: #ffffff;
+}
+
+.btn-primary:hover {
+    background-color: var(--kalo-green-hover);
+}
+
+.btn-outline {
+    background-color: transparent;
+    border: 1.5px solid var(--kalo-green-primary);
+    color: var(--kalo-green-primary);
+}
+
+.btn-outline:hover {
+    background-color: var(--kalo-green-light);
+}
+
+.btn-secondary {
+    background-color: #3b82f6;
+    color: #ffffff;
+}
+
+.btn-danger {
+    background-color: var(--kalo-red-danger);
+    color: #ffffff;
+}
+
+.btn-block {
+    width: 100%;
+}
+
+.btn-lg {
+    padding: 14px 22px;
+    font-size: 15px;
+}
+
+.btn-sm {
+    padding: 7px 14px;
+    font-size: 12px;
+}
+
+.btn-flex-grow {
+    flex: 1;
+}
+
+.btn-icon-back {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: var(--kalo-text-main);
+    padding: 4px 8px;
+    border-radius: var(--kalo-radius-sm);
+}
+
+/* Campos de Formulario */
+.form-group {
+    margin-bottom: 14px;
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--kalo-text-main);
+    margin-bottom: 6px;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="url"],
+select,
+textarea {
+    width: 100%;
+    padding: 11px 14px;
+    border: 1.5px solid var(--kalo-border);
+    border-radius: var(--kalo-radius-md);
+    font-size: 14px;
+    color: var(--kalo-text-main);
+    background-color: #ffffff;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+    border-color: var(--kalo-green-primary);
+    box-shadow: 0 0 0 3px rgba(27, 94, 58, 0.12);
+}
+
+/* Inputs con error (Mockup 1.3 y 1.5) */
+.input-error,
+input.has-error {
+    border-color: var(--kalo-red-danger) !important;
+    background-color: #fffaf9;
+}
+
+.error-msg-inline {
+    color: var(--kalo-red-danger);
+    font-size: 11px;
+    font-weight: 500;
+    margin-top: 4px;
+}
+
+.input-password-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.btn-toggle-password {
+    position: absolute;
+    right: 10px;
+    background: none;
+    border: none;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--kalo-text-subtle);
+    cursor: pointer;
+    padding: 4px;
+}
+
+/* Alerta de error estilizada */
+.alert-error {
+    background-color: var(--kalo-red-light);
+    border: 1px solid #fecaca;
+    color: var(--kalo-red-danger);
+    padding: 10px 14px;
+    border-radius: var(--kalo-radius-md);
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* ==========================================================================
+   1. ESTILOS PANTALLAS DE ONBOARDING (MOCKUP 1)
+   ========================================================================== */
+.screen-flow {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 16px 22px 24px 22px;
+    overflow-y: auto;
+}
+
+.flow-header-simple {
+    display: flex;
+    justify-content: center;
+    padding: 12px 0 8px 0;
+}
+
+.welcome-hero-image-wrap {
+    width: 100%;
+    height: 270px;
+    border-radius: 28px;
+    overflow: hidden;
+    margin: 12px 0 20px 0;
+    box-shadow: var(--kalo-shadow-md);
+}
+
+.welcome-hero-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.welcome-content {
+    display: flex;
+    flex-direction: column;
+    text-align: center;
+    flex: 1;
     justify-content: space-between;
 }
 
-.platillo-header {
+.welcome-content h2 {
+    font-size: 24px;
+    margin-bottom: 8px;
+    color: var(--kalo-text-main);
+}
+
+.welcome-content p {
+    color: var(--kalo-text-subtle);
+    font-size: 14px;
+    margin-bottom: 24px;
+}
+
+.welcome-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.welcome-footer-tag {
+    font-size: 11px;
+    color: var(--kalo-text-subtle);
+    font-style: italic;
+}
+
+.flow-nav-top {
     display: flex;
     justify-content: space-between;
+    align-items: center;
+    padding: 6px 0 16px 0;
+}
+
+.flow-body {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.flow-subtitle {
+    color: var(--kalo-text-subtle);
+    font-size: 13px;
+    margin: 4px 0 18px 0;
+}
+
+.flow-step-indicator {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--kalo-text-subtle);
+    border-bottom: 1px solid var(--kalo-border);
+    padding-bottom: 6px;
+    margin-bottom: 14px;
+}
+
+.flow-step-indicator strong {
+    color: var(--kalo-green-primary);
+}
+
+.flow-link-row {
+    display: flex;
+    font-size: 12px;
+    margin-top: 6px;
+}
+
+.flow-link-row.right { justify-content: flex-end; }
+.flow-link-row.center { justify-content: center; }
+
+.link-subtle { color: var(--kalo-text-subtle); text-decoration: none; }
+.link-subtle:hover { text-decoration: underline; }
+.link-bold { color: var(--kalo-green-primary); font-weight: 700; text-decoration: none; }
+
+.slogan-badge-footer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+    margin-top: 32px;
+    color: var(--kalo-green-primary);
+    font-weight: 500;
+    font-size: 12px;
+}
+
+/* Selector de Rol Visual (Paso 1) */
+.label-heading {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--kalo-text-main);
+    margin-bottom: 8px;
+    display: block;
+}
+
+.role-selector-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 18px;
+}
+
+.role-card {
+    border: 1.5px solid var(--kalo-border);
+    border-radius: var(--kalo-radius-md);
+    padding: 12px 6px;
+    text-align: center;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.2s;
+    background: #ffffff;
+}
+
+.role-card.selected {
+    border-color: var(--kalo-green-primary);
+    background-color: var(--kalo-green-light);
+}
+
+.role-check {
+    font-size: 13px;
+    color: var(--kalo-green-primary);
+    font-weight: 700;
+}
+
+.role-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--kalo-text-main);
+}
+
+.pass-checklist {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 6px;
+}
+
+.chk-item {
+    font-size: 11px;
+    color: var(--kalo-text-subtle);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.chk-item.valid {
+    color: var(--kalo-green-accent);
+    font-weight: 600;
+}
+
+.grid-inputs-row {
+    display: flex;
+    gap: 10px;
+}
+
+.privacy-note-card {
+    background-color: #f8fafc;
+    border: 1px solid var(--kalo-border);
+    border-radius: var(--kalo-radius-md);
+    padding: 10px 12px;
+    display: flex;
+    gap: 8px;
     align-items: flex-start;
+    margin: 8px 0 14px 0;
+}
+
+.privacy-note-card small {
+    color: var(--kalo-text-subtle);
+    font-size: 11px;
+    line-height: 1.4;
+}
+
+/* Pantalla Resultado IMC (Mockup 1.6) */
+.success-pill-top {
+    align-self: flex-start;
+    background: var(--kalo-green-light);
+    color: var(--kalo-green-primary);
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: var(--kalo-radius-pill);
+    margin-bottom: 12px;
+}
+
+.card-imc-result {
+    border: 1.5px solid var(--kalo-border);
+    border-radius: var(--kalo-radius-lg);
+    padding: 18px 20px;
+    margin-top: 14px;
+    background: #ffffff;
+}
+
+.card-imc-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    color: var(--kalo-text-subtle);
+}
+
+.card-imc-number {
+    font-size: 40px;
+    font-weight: 800;
+    color: var(--kalo-text-main);
+    margin: 4px 0;
+    line-height: 1;
+}
+
+.card-imc-badge {
+    color: #d97706; /* Sobrepeso leve naranja cálido */
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 12px;
+}
+
+.card-imc-stats {
+    font-size: 12px;
+    color: var(--kalo-text-subtle);
+    border-top: 1px solid var(--kalo-border);
+    padding-top: 8px;
+}
+
+.card-meta-result {
+    background: var(--kalo-green-light);
+    border-radius: var(--kalo-radius-lg);
+    padding: 16px 20px;
+    margin-top: 14px;
+}
+
+.meta-label {
+    font-size: 12px;
+    color: var(--kalo-green-primary);
+    font-weight: 600;
+}
+
+.meta-number {
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--kalo-green-primary);
+    margin: 4px 0;
+}
+
+.meta-sub {
+    font-size: 11px;
+    color: var(--kalo-text-subtle);
+    display: block;
+}
+
+.note-orientative {
+    font-size: 11px;
+    color: var(--kalo-text-subtle);
+    margin: 16px 0 8px 0;
+    text-align: center;
+}
+
+/* ==========================================================================
+   2. APP CLIENTE: HEADER, TABS Y NAVEGACIÓN INFERIOR (MOCKUP 2, 3, 4)
+   ========================================================================== */
+.app-top-nav {
+    background: #ffffff;
+    border-bottom: 1px solid var(--kalo-border);
+    flex-shrink: 0;
+}
+
+.address-selector-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 18px 4px 18px;
+}
+
+.address-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--kalo-text-main);
+    cursor: pointer;
+}
+
+/* BARRA DE SEGUIMIENTO CALÓRICO DIARIO */
+.calorie-tracker-card {
+    background: var(--kalo-green-light);
+    margin: 6px 16px 12px 16px;
+    padding: 8px 12px;
+    border-radius: var(--kalo-radius-md);
+    cursor: pointer;
+}
+
+.tracker-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--kalo-green-primary);
+    margin-bottom: 5px;
+}
+
+.tracker-bar-bg {
+    width: 100%;
+    height: 6px;
+    background: rgba(27, 94, 58, 0.15);
+    border-radius: var(--kalo-radius-pill);
+    overflow: hidden;
+}
+
+.tracker-bar-fill {
+    height: 100%;
+    background-color: var(--kalo-green-accent);
+    border-radius: var(--kalo-radius-pill);
+    transition: width 0.4s ease;
+}
+
+/* TABS CONTAINER */
+.tab-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px 16px 80px 16px;
+    display: flex;
+    flex-direction: column;
+}
+
+/* BARRA INFERIOR (BOTTOM NAV BAR) */
+.bottom-nav-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 62px;
+    background: #ffffff;
+    border-top: 1px solid var(--kalo-border);
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    z-index: 100;
+}
+
+.nav-item {
+    background: none;
+    border: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--kalo-text-subtle);
+    cursor: pointer;
+    position: relative;
+    padding: 6px 12px;
+    transition: color 0.2s;
+}
+
+.nav-item.active {
+    color: var(--kalo-green-primary);
+}
+
+.nav-icon {
+    font-size: 18px;
+}
+
+.cart-badge-dot {
+    position: absolute;
+    top: 2px;
+    right: 14px;
+    background: var(--kalo-red-danger);
+    color: #ffffff;
+    font-size: 10px;
+    font-weight: 800;
+    border-radius: var(--kalo-radius-pill);
+    padding: 1px 5px;
+}
+
+/* ==========================================================================
+   2.1 PESTAÑA EXPLORAR: BUSCADOR, CATEGORÍAS Y CARDS (MOCKUP 2)
+   ========================================================================== */
+.search-input-wrap {
+    position: relative;
     margin-bottom: 10px;
 }
 
-.platillo-header h4 {
-    font-size: 16px;
-    color: var(--dark);
+.search-input-wrap input {
+    padding-left: 36px;
+    border-radius: var(--kalo-radius-pill);
+    font-size: 13px;
+    background: #f8fafc;
 }
 
-.calorias-tag {
-    background: #fee2e2;
-    color: #b91c1c;
-    font-size: 12px;
-    font-weight: 600;
-    padding: 3px 8px;
-    border-radius: 6px;
+.search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 14px;
+    color: var(--kalo-text-subtle);
 }
 
-.macros-box {
+.meal-categories-scroll {
     display: flex;
     gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+    margin-bottom: 10px;
+}
+
+.meal-categories-scroll::-webkit-scrollbar { display: none; }
+
+.pill-category {
+    background: #ffffff;
+    border: 1px solid var(--kalo-border);
+    border-radius: var(--kalo-radius-pill);
+    padding: 6px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--kalo-text-subtle);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+}
+
+.pill-category.active {
+    background: var(--kalo-green-primary);
+    color: #ffffff;
+    border-color: var(--kalo-green-primary);
+}
+
+.quick-filters-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.chip-filter {
+    background: #ffffff;
+    border: 1px solid var(--kalo-border);
+    border-radius: var(--kalo-radius-pill);
+    padding: 5px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--kalo-text-main);
+    cursor: pointer;
+}
+
+.chip-filter.active {
+    background: var(--kalo-green-light);
+    border-color: var(--kalo-green-primary);
+    color: var(--kalo-green-primary);
+}
+
+.section-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 12px;
+}
+
+.section-title-row h3 {
+    font-size: 16px;
+    margin-bottom: 2px;
+}
+
+.sort-icon {
+    font-size: 16px;
+    color: var(--kalo-text-subtle);
+    cursor: pointer;
+}
+
+/* Tarjeta de Platillo Móvil */
+.dishes-vertical-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.dish-card-mobile {
+    border: 1px solid var(--kalo-border);
+    border-radius: var(--kalo-radius-lg);
+    background: #ffffff;
+    overflow: hidden;
+    box-shadow: var(--kalo-shadow-sm);
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.dish-card-mobile:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--kalo-shadow-md);
+}
+
+.dish-card-img-wrap {
+    width: 100%;
+    height: 160px;
+    position: relative;
+    overflow: hidden;
+}
+
+.dish-card-img-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.badge-transparency-card {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(4px);
+    color: var(--kalo-green-primary);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: var(--kalo-radius-pill);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.dish-card-body {
+    padding: 12px 14px;
+}
+
+.dish-card-body h4 {
+    font-size: 15px;
+    margin-bottom: 2px;
+}
+
+.dish-card-rest-name {
+    font-size: 11px;
+    color: var(--kalo-text-subtle);
+    margin-bottom: 8px;
+    display: block;
+}
+
+.dish-calorie-pill {
+    display: inline-block;
+    background: #f1f5f9;
+    color: var(--kalo-text-main);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: var(--kalo-radius-pill);
+    margin-bottom: 8px;
+}
+
+.dish-macros-pills {
+    display: flex;
+    gap: 10px;
+    font-size: 11px;
+    color: var(--kalo-text-subtle);
+    margin-bottom: 10px;
+}
+
+.dish-macros-pills span strong {
+    color: var(--kalo-text-main);
+}
+
+.dish-card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid #f1f5f9;
+    padding-top: 8px;
+}
+
+.dish-price {
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--kalo-text-main);
+}
+
+/* ==========================================================================
+   2.2 PESTAÑA SEGUIMIENTO Y EVALUACIÓN (MOCKUP 3)
+   ========================================================================== */
+.orders-tab-header {
+    margin-bottom: 14px;
+}
+
+.subtabs-pills {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.subtab-pill {
+    background: #ffffff;
+    border: 1px solid var(--kalo-border);
+    border-radius: var(--kalo-radius-pill);
+    padding: 4px 14px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--kalo-text-subtle);
+    cursor: pointer;
+}
+
+.subtab-pill.active {
+    background: var(--kalo-green-primary);
+    color: #ffffff;
+    border-color: var(--kalo-green-primary);
+}
+
+.order-tracking-card {
+    border: 1.5px solid var(--kalo-border);
+    border-radius: var(--kalo-radius-lg);
+    padding: 16px;
+    background: #ffffff;
+    margin-bottom: 18px;
+    box-shadow: var(--kalo-shadow-sm);
+}
+
+.tracking-top-bar {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--kalo-text-subtle);
+    margin-bottom: 4px;
+}
+
+/* STEPPER HORIZONTAL DE 4 ETAPAS */
+.stepper-horizontal {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 18px 0;
+    position: relative;
+}
+
+.step-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    z-index: 2;
+}
+
+.step-dot {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #e5e7eb;
+    color: #9ca3af;
+    font-size: 10px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.step-node.active .step-dot {
+    background: var(--kalo-green-primary);
+    color: #ffffff;
+}
+
+.step-node small {
+    font-size: 9px;
+    font-weight: 600;
+    color: var(--kalo-text-subtle);
+}
+
+.step-node.active small {
+    color: var(--kalo-green-primary);
+}
+
+.step-line {
+    flex: 1;
+    height: 3px;
+    background: #e5e7eb;
+    margin: 0 4px 16px 4px;
+}
+
+.step-line.active {
+    background: var(--kalo-green-primary);
+}
+
+/* CAJA DESTACADA DEL PIN DE 4 DÍGITOS (MOCKUP 3.2) */
+.pin-highlight-box {
+    background-color: var(--kalo-amber-bg);
+    border: 1.5px solid var(--kalo-amber-border);
+    border-radius: var(--kalo-radius-lg);
+    padding: 16px;
+    text-align: center;
+    margin: 14px 0;
+}
+
+.pin-shield-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: #92400e;
+}
+
+.pin-huge-digits {
+    font-size: 42px;
+    font-weight: 800;
+    letter-spacing: 10px;
+    color: #92400e;
+    margin: 4px 0;
+    line-height: 1.1;
+}
+
+.pin-security-hint {
+    font-size: 11px;
+    color: #b45309;
+    margin-bottom: 12px;
+    line-height: 1.3;
+}
+
+.driver-info-row {
+    border-top: 1px solid rgba(252, 211, 77, 0.4);
+    padding-top: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-align: left;
+}
+
+.driver-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: #d97706;
+    color: #ffffff;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+}
+
+.driver-eta {
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--kalo-text-subtle);
+}
+
+.driver-eta strong {
+    color: var(--kalo-text-main);
+}
+
+.prep-estimate-box {
+    background: #f8fafc;
+    border: 1px solid var(--kalo-border);
+    border-radius: var(--kalo-radius-md);
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
     margin: 12px 0;
 }
 
-.macro-item {
-    flex: 1;
-    background: #f9fafb;
-    border-radius: 6px;
-    padding: 6px;
-    text-align: center;
-    font-size: 11px;
+.delivered-notice-box {
+    background: var(--kalo-green-light);
+    border-radius: var(--kalo-radius-md);
+    padding: 12px 14px;
+    margin: 12px 0;
 }
 
-.macro-val {
+.delivered-notice-header {
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--kalo-green-primary);
+}
+
+.tracking-dish-summary {
+    border-top: 1px solid var(--kalo-border);
+    padding-top: 12px;
+    margin-top: 14px;
+}
+
+.summary-dish-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.dish-thumb-sm {
+    width: 44px;
+    height: 44px;
+    border-radius: var(--kalo-radius-sm);
+    object-fit: cover;
+}
+
+.summary-price {
+    margin-left: auto;
+    font-weight: 700;
+    font-size: 13px;
+}
+
+.linea-flex {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--kalo-text-subtle);
+    margin-top: 4px;
+}
+
+.linea-flex.bold {
+    color: var(--kalo-text-main);
+    font-size: 14px;
+}
+
+/* ==========================================================================
+   2.3 PESTAÑA CARRITO (MOCKUP 2.6)
+   ========================================================================== */
+.cart-address-badge {
+    background: #f8fafc;
+    border: 1px solid var(--kalo-border);
+    border-radius: var(--kalo-radius-md);
+    padding: 10px 12px;
+    font-size: 12px;
     font-weight: 600;
-    display: block;
-    color: var(--dark);
+    margin-bottom: 14px;
 }
 
-/* BARRA DE TRANSPARENCIA FORMULARIO */
-.transparencia-calc-box {
-    background: #fffbeb;
-    border: 1px solid #fef3c7;
-    border-radius: 8px;
+.cart-item-card {
+    display: flex;
+    gap: 10px;
+    align-items: center;
     padding: 12px;
+    border: 1px solid var(--kalo-border);
+    border-radius: var(--kalo-radius-md);
+    margin-bottom: 10px;
+    background: #ffffff;
+}
+
+.cart-item-info {
+    flex: 1;
+}
+
+.cart-item-info h5 {
+    font-size: 13px;
+    margin-bottom: 2px;
+}
+
+.nutrition-impact-card {
+    background: var(--kalo-green-light);
+    border-radius: var(--kalo-radius-lg);
+    padding: 14px 16px;
+    margin: 14px 0;
+}
+
+.impact-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.kcal-badge-total {
+    font-size: 14px;
+    color: var(--kalo-green-primary);
+}
+
+.impact-goal-badge {
+    background: #ffffff;
+    color: var(--kalo-green-primary);
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: var(--kalo-radius-pill);
+    margin: 8px 0;
+    display: inline-block;
+}
+
+.impact-scenario-text {
+    font-size: 11px;
+    color: var(--kalo-text-subtle);
+    line-height: 1.4;
+    display: block;
+}
+
+.cart-payment-breakdown {
+    border-top: 1px solid var(--kalo-border);
+    padding-top: 10px;
+}
+
+.total-line {
+    font-size: 16px;
+    color: var(--kalo-text-main);
+    border-top: 1px solid var(--kalo-border);
+    padding-top: 8px;
+    margin-top: 8px;
+}
+
+/* ==========================================================================
+   2.4 PESTAÑA PERFIL Y PLANES (MOCKUP 4)
+   ========================================================================== */
+.profile-header-card {
+    text-align: center;
+    padding: 10px 0 16px 0;
+}
+
+.profile-avatar-circle {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: var(--kalo-green-light);
+    color: var(--kalo-green-primary);
+    font-size: 22px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 10px auto;
+}
+
+.profile-metrics-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
     margin-bottom: 16px;
 }
 
+.metric-pill-card {
+    background: #f8fafc;
+    border: 1px solid var(--kalo-border);
+    border-radius: var(--kalo-radius-md);
+    padding: 12px;
+}
+
+.metric-pill-card small {
+    font-size: 11px;
+    color: var(--kalo-text-subtle);
+    display: block;
+}
+
+.metric-pill-card strong {
+    font-size: 18px;
+    color: var(--kalo-text-main);
+    display: block;
+    margin: 2px 0;
+}
+
+.subtext-status {
+    font-size: 11px;
+    color: #d97706;
+    font-weight: 600;
+}
+
+.card-profile-section {
+    border: 1px solid var(--kalo-border);
+    border-radius: var(--kalo-radius-lg);
+    padding: 14px;
+    background: #ffffff;
+    margin-bottom: 14px;
+}
+
+.section-edit-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.btn-edit-icon {
+    background: none;
+    border: none;
+    color: var(--kalo-green-primary);
+    font-weight: 700;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.profile-links-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.profile-link-btn {
+    width: 100%;
+    background: #ffffff;
+    border: 1px solid var(--kalo-border);
+    border-radius: var(--kalo-radius-md);
+    padding: 12px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    color: var(--kalo-text-main);
+    cursor: pointer;
+}
+
+.btn-danger-link {
+    background: none;
+    border: none;
+    color: var(--kalo-red-danger);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    text-align: center;
+    width: 100%;
+    padding: 10px;
+}
+
+/* ==========================================================================
+   3. ESTILOS RESTAURANTE: DASHBOARD ESCRITORIO (MOCKUP 5)
+   ========================================================================== */
+.contenedor-restaurante-desktop {
+    display: flex;
+    min-height: calc(100vh - 45px);
+    background: #f8fafc;
+}
+
+.sidebar-desktop {
+    width: 250px;
+    background: #ffffff;
+    border-right: 1px solid var(--kalo-border);
+    display: flex;
+    flex-direction: column;
+    padding: 20px 16px;
+    flex-shrink: 0;
+}
+
+.sidebar-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 28px;
+}
+
+.role-badge-side {
+    background: var(--kalo-green-light);
+    color: var(--kalo-green-primary);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: var(--kalo-radius-pill);
+}
+
+.sidebar-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+}
+
+.menu-item {
+    background: none;
+    border: none;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: var(--kalo-radius-md);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--kalo-text-subtle);
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.2s;
+}
+
+.menu-item:hover {
+    background: #f1f5f9;
+    color: var(--kalo-text-main);
+}
+
+.menu-item.active {
+    background: var(--kalo-green-light);
+    color: var(--kalo-green-primary);
+}
+
+.sidebar-footer-box {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    border-top: 1px solid var(--kalo-border);
+    padding-top: 16px;
+}
+
+.support-card {
+    background: #f8fafc;
+    border-radius: var(--kalo-radius-md);
+    padding: 10px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    font-size: 11px;
+}
+
+.current-restaurant-info {
+    font-size: 12px;
+}
+
+.btn-logout-link {
+    background: none;
+    border: none;
+    color: var(--kalo-red-danger);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 4px;
+    padding: 0;
+}
+
+.main-desktop-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
+.top-header-desktop {
+    background: #ffffff;
+    border-bottom: 1px solid var(--kalo-border);
+    padding: 16px 28px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.status-online-dot {
+    color: var(--kalo-green-accent);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.header-right-widgets {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.transparency-score-badge {
+    background: var(--kalo-green-light);
+    border: 1px solid rgba(5, 150, 105, 0.2);
+    border-radius: var(--kalo-radius-pill);
+    padding: 6px 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.score-green {
+    color: var(--kalo-green-accent);
+    font-size: 15px;
+    font-weight: 800;
+}
+
+.switch-toggle-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 22px;
+}
+
+.switch input { opacity: 0; width: 0; height: 0; }
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: #cbd5e1;
+    transition: 0.3s;
+    border-radius: 34px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: 0.3s;
+    border-radius: 50%;
+}
+
+input:checked + .slider {
+    background-color: var(--kalo-green-primary);
+}
+
+input:checked + .slider:before {
+    transform: translateX(18px);
+}
+
+.tab-desktop-view {
+    padding: 24px 28px;
+}
+
+/* TABLERO KANBAN DE PEDIDOS (MOCKUP 5.1) */
+.alert-banner-pedido {
+    background: #ecfdf5;
+    border: 1px solid #a7f3d0;
+    border-radius: var(--kalo-radius-md);
+    padding: 12px 18px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 20px;
+}
+
+.banner-info-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    font-size: 13px;
+}
+
+.kanban-board-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    align-items: flex-start;
+}
+
+.kanban-column {
+    background: #ffffff;
+    border: 1px solid var(--kalo-border);
+    border-radius: var(--kalo-radius-lg);
+    padding: 14px;
+    min-height: 480px;
+}
+
+.kanban-col-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid var(--kalo-border);
+    padding-bottom: 10px;
+    margin-bottom: 12px;
+}
+
+.col-count {
+    margin-left: auto;
+    background: #f1f5f9;
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: var(--kalo-radius-pill);
+    padding: 2px 8px;
+}
+
+.col-dot.dot-yellow { color: #f59e0b; }
+.col-dot.dot-blue { color: #3b82f6; }
+.col-dot.dot-purple { color: #8b5cf6; }
+.col-dot.dot-green { color: #10b981; }
+
+.kanban-cards-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.kanban-item-card {
+    border: 1px solid var(--kalo-border);
+    border-radius: var(--kalo-radius-md);
+    padding: 12px;
+    background: #ffffff;
+    box-shadow: var(--kalo-shadow-sm);
+}
+
+.kanban-item-card strong {
+    font-size: 13px;
+}
+
+.pin-status-tag {
+    background: var(--kalo-amber-bg);
+    color: #b45309;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: var(--kalo-radius-pill);
+    display: inline-block;
+    margin-top: 6px;
+}
+
+/* TABLA DE MIS PLATILLOS (MOCKUP 5.2) */
+.desktop-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.filters-table-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+}
+
+.input-search-table {
+    max-width: 260px;
+    padding: 8px 12px;
+}
+
+.table-responsive-card {
+    background: #ffffff;
+    border: 1px solid var(--kalo-border);
+    border-radius: var(--kalo-radius-lg);
+    overflow: hidden;
+}
+
+.desktop-data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    text-align: left;
+}
+
+.desktop-data-table th,
+.desktop-data-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--kalo-border);
+}
+
+.desktop-data-table th {
+    background: #f8fafc;
+    font-weight: 700;
+    color: var(--kalo-text-subtle);
+    font-size: 11px;
+    text-transform: uppercase;
+}
+
+/* FORMULARIO CREAR PLATILLO CON INGREDIENTES (MOCKUP 5.2) */
+.create-dish-grid-two-cols {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 24px;
+    align-items: flex-start;
+}
+
+.card-inner-form {
+    background: #ffffff;
+    border: 1px solid var(--kalo-border);
+    border-radius: var(--kalo-radius-lg);
+    padding: 20px;
+}
+
+.ingredients-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+
+.ingredients-table th,
+.ingredients-table td {
+    padding: 6px;
+}
+
+.ingredients-table input,
+.ingredients-table select {
+    padding: 6px 8px;
+    font-size: 12px;
+}
+
+.btn-remove-row {
+    background: #fee2e2;
+    border: none;
+    color: #ef4444;
+    border-radius: 50%;
+    width: 22px;
+    height: 22px;
+    cursor: pointer;
+    font-weight: 800;
+}
+
+.card-preview-live {
+    background: #ffffff;
+    border: 1px solid var(--kalo-border);
+    border-radius: var(--kalo-radius-lg);
+    padding: 20px;
+    position: sticky;
+    top: 70px;
+}
+
+.preview-tag {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--kalo-text-subtle);
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: 10px;
+}
+
+.dish-preview-card {
+    border: 1px solid var(--kalo-border);
+    border-radius: var(--kalo-radius-md);
+    overflow: hidden;
+}
+
+.preview-dish-img {
+    width: 100%;
+    height: 150px;
+    object-fit: cover;
+}
+
+.preview-dish-body {
+    padding: 12px;
+}
+
+.badge-mini-green {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--kalo-green-primary);
+    background: var(--kalo-green-light);
+    padding: 2px 8px;
+    border-radius: var(--kalo-radius-pill);
+    display: inline-block;
+    margin-bottom: 4px;
+}
+
+.preview-macros-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    text-align: center;
+    background: #f8fafc;
+    padding: 8px;
+    border-radius: var(--kalo-radius-sm);
+}
+
+.cell-num {
+    font-weight: 800;
+    font-size: 12px;
+    display: block;
+}
+
+.preview-footer-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.price-lg {
+    font-size: 17px;
+    font-weight: 800;
+}
+
+.card-transparency-score {
+    background: #f8fafc;
+    border-radius: var(--kalo-radius-md);
+    padding: 12px;
+}
+
+.score-number {
+    font-size: 16px;
+    color: var(--kalo-green-accent);
+}
+
 .progress-bar-bg {
-    background: #e5e7eb;
-    height: 10px;
-    border-radius: 6px;
+    width: 100%;
+    height: 8px;
+    background: #e2e8f0;
+    border-radius: var(--kalo-radius-pill);
     overflow: hidden;
 }
 
 .progress-bar-fill {
     height: 100%;
-    transition: width 0.3s ease, background-color 0.3s ease;
+    background: var(--kalo-green-accent);
+    border-radius: var(--kalo-radius-pill);
 }
 
-.opcionales-box {
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    padding: 12px;
-    margin-top: 10px;
-}
-
-/* MODAL CARRITO */
-.carrito-items-lista {
-    max-height: 280px;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    margin-bottom: 16px;
-}
-
-.carrito-item-fila {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: #f9fafb;
-    padding: 10px 14px;
-    border-radius: 8px;
-    border: 1px solid var(--border);
-}
-
-.carrito-resumen-box {
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    padding: 14px;
-}
-
-.resumen-linea {
-    display: flex;
-    justify-content: space-between;
-    font-size: 14px;
-}
-
-/* 2. VISTA RESTAURANTE */
-.grid-dos-columnas {
+/* LOCAL Y VALIDACIÓN DE DARK KITCHENS (MOCKUP 5.3) */
+.grid-local-info {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 20px;
 }
 
-.card {
-    background: white;
-    border-radius: var(--radius);
-    border: 1px solid var(--border);
-    padding: 20px;
-    box-shadow: var(--shadow);
+.score-huge {
+    font-size: 34px;
+    font-weight: 800;
+    color: var(--kalo-green-accent);
 }
 
-.card h4 {
-    margin-bottom: 14px;
-    color: var(--dark);
+.kitchen-photos-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
 }
 
-.lista-items {
+.kitchen-photo-card {
+    border: 1px solid var(--kalo-border);
+    border-radius: var(--kalo-radius-md);
+    overflow: hidden;
+    background: #ffffff;
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    max-height: 380px;
-    overflow-y: auto;
 }
 
-.item-row {
-    background: #f9fafb;
-    padding: 12px;
-    border-radius: 8px;
-    border: 1px solid var(--border);
+.kitchen-photo-card img {
+    width: 100%;
+    height: 130px;
+    object-fit: cover;
 }
 
-/* 3. VISTA REPARTIDOR (MOBILE-FIRST) */
-.mobile-simulator-wrapper {
+.kitchen-caption {
+    padding: 8px 10px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.dropzone-card {
+    height: 170px;
+    border: 2px dashed #cbd5e1;
     display: flex;
+    flex-direction: column;
     justify-content: center;
     align-items: center;
-    padding: 20px 0;
-}
-
-.smartphone-frame {
-    width: 360px;
-    height: 720px;
-    background: #111827;
-    border-radius: 40px;
-    padding: 14px;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-    border: 4px solid #374151;
-}
-
-.smartphone-screen {
-    background: #ffffff;
-    width: 100%;
-    height: 100%;
-    border-radius: 28px;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-}
-
-.phone-status-bar {
-    display: flex;
-    justify-content: space-between;
-    padding: 8px 16px;
-    font-size: 11px;
-    font-weight: 600;
-    color: #4b5563;
-    border-bottom: 1px solid #f3f4f6;
-}
-
-.phone-app-header {
-    background: #10b981;
-    color: white;
-    padding: 14px 16px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.phone-app-header h4 {
-    font-size: 16px;
-}
-
-.status-dot-online {
-    background: #047857;
-    padding: 4px 8px;
-    border-radius: 12px;
-    font-size: 11px;
-}
-
-.phone-content {
-    padding: 16px;
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-}
-
-.order-pickup-card {
+    cursor: pointer;
     background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    padding: 14px;
-    margin-bottom: 14px;
 }
 
-.badge-mini {
-    background: #dbeafe;
-    color: #1e40af;
-    font-size: 10px;
-    font-weight: 600;
-    padding: 2px 6px;
-    border-radius: 4px;
-}
-
-.order-pickup-card h5 {
-    font-size: 15px;
-    margin: 6px 0;
-    color: var(--dark);
-}
-
-.order-pickup-card p {
-    font-size: 12px;
-    color: #475569;
+.dropzone-icon {
+    font-size: 24px;
     margin-bottom: 4px;
 }
 
-.order-alert {
-    display: block;
+/* ==========================================================================
+   4. MODALES, SHEETS Y DETALLES
+   ========================================================================== */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    z-index: 10000;
+}
+
+.modal-sheet-content {
+    background: #ffffff;
+    width: 100%;
+    max-width: 480px;
+    max-height: 92vh;
+    border-radius: 28px 28px 0 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+}
+
+.modal-sheet-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--kalo-border);
+    flex-shrink: 0;
+}
+
+.sheet-nav-title {
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.sheet-scroll-body {
+    overflow-y: auto;
+    flex: 1;
+}
+
+.sheet-hero-img-wrap {
+    width: 100%;
+    height: 220px;
+    position: relative;
+}
+
+.sheet-hero-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.sheet-badge-transp {
+    position: absolute;
+    bottom: 12px;
+    left: 14px;
+    background: rgba(255, 255, 255, 0.95);
+    color: var(--kalo-green-primary);
+    font-weight: 700;
     font-size: 11px;
-    color: #d97706;
-    margin-top: 8px;
-    font-weight: 500;
+    padding: 4px 12px;
+    border-radius: var(--kalo-radius-pill);
+}
+
+.sheet-content-padding {
+    padding: 16px 20px;
+}
+
+.sheet-rest-meta {
+    font-size: 12px;
+    color: var(--kalo-text-subtle);
+    margin: 4px 0 10px 0;
+}
+
+.sheet-price-tag {
+    font-size: 22px;
+    font-weight: 800;
+}
+
+/* Gráfico Visual Circular de Macros (Mockup 2.5) */
+.nutrition-donut-card {
+    background: #f8fafc;
+    border: 1px solid var(--kalo-border);
+    border-radius: var(--kalo-radius-lg);
+    padding: 14px;
+}
+
+.nutrition-circle-row {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.macro-circle-center {
+    width: 86px;
+    height: 86px;
+    border-radius: 50%;
+    border: 4px solid var(--kalo-green-primary);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: #ffffff;
+}
+
+.circle-cal-num {
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--kalo-green-primary);
+    line-height: 1;
+}
+
+.macro-circle-center small {
+    font-size: 9px;
+    color: var(--kalo-text-subtle);
+}
+
+.macro-lines-right {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.macro-stat-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+}
+
+.macro-stat-item strong {
+    margin-left: auto;
+}
+
+.dot-macro.dot-prot { color: #059669; }
+.dot-macro.dot-carb { color: #f59e0b; }
+.dot-macro.dot-gras { color: #ef4444; }
+
+.section-badge-clean {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--kalo-green-primary);
+    margin-bottom: 4px;
+}
+
+.ingredients-list-pills {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.ing-item-line {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    padding: 6px 10px;
+    background: #f8fafc;
+    border-radius: var(--kalo-radius-sm);
+}
+
+.sheet-sticky-footer {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    padding: 12px 18px;
+    border-top: 1px solid var(--kalo-border);
+    background: #ffffff;
+    flex-shrink: 0;
+}
+
+.qty-counter-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 1.5px solid var(--kalo-border);
+    border-radius: var(--kalo-radius-pill);
+    padding: 4px 8px;
+}
+
+.btn-qty {
+    background: none;
+    border: none;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    width: 24px;
+}
+
+.modal-dialog-card {
+    background: #ffffff;
+    border-radius: 24px;
+    width: 90%;
+    max-width: 380px;
+    padding: 24px;
+    margin: auto;
+    text-align: center;
+    box-shadow: var(--kalo-shadow-lg);
+}
+
+.dialog-icon { font-size: 32px; display: block; margin-bottom: 8px; }
+.dialog-icon-danger { font-size: 32px; display: block; margin-bottom: 8px; color: var(--kalo-red-danger); }
+
+.dialog-actions-row {
+    display: flex;
+    gap: 10px;
+}
+
+.dialog-actions-row button {
+    flex: 1;
+}
+
+/* Teclado PIN Repartidor */
+.driver-app-header {
+    padding: 12px 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--kalo-border);
+}
+
+.status-dot-online {
+    background: #dcfce7;
+    color: #15803d;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: var(--kalo-radius-pill);
+}
+
+.driver-content-scroll {
+    padding: 16px;
+    overflow-y: auto;
+}
+
+.order-pickup-card {
+    border: 1px solid var(--kalo-border);
+    border-radius: var(--kalo-radius-lg);
+    padding: 16px;
+    background: #ffffff;
+    margin-bottom: 14px;
+}
+
+.order-alert-box {
+    background: #fef3c7;
+    color: #92400e;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 6px 10px;
+    border-radius: var(--kalo-radius-md);
+    display: block;
+    margin-top: 10px;
+    line-height: 1.3;
 }
 
 .pin-validation-box {
+    border: 1.5px solid var(--kalo-border);
+    border-radius: var(--kalo-radius-lg);
+    padding: 16px;
+    background: #f8fafc;
     text-align: center;
-}
-
-.pin-validation-box label {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text-muted);
 }
 
 .pin-display input {
-    width: 100%;
-    font-size: 26px;
-    letter-spacing: 12px;
+    font-size: 28px;
+    font-weight: 800;
     text-align: center;
-    border: 2px solid #cbd5e1;
-    border-radius: 8px;
-    padding: 8px;
-    margin: 8px 0 14px;
-    font-weight: 700;
-    background: #f1f5f9;
+    letter-spacing: 12px;
+    background: #ffffff;
+    margin: 8px 0 14px 0;
 }
 
 .keypad-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
-    margin-bottom: 12px;
+    gap: 10px;
+    max-width: 240px;
+    margin: 0 auto;
 }
 
 .key-btn {
-    background: #f8fafc;
-    border: 1px solid #cbd5e1;
-    padding: 12px;
+    height: 48px;
+    border-radius: 50%;
+    border: 1px solid var(--kalo-border);
+    background: #ffffff;
     font-size: 18px;
-    font-weight: 600;
-    border-radius: 8px;
+    font-weight: 700;
     cursor: pointer;
-    transition: background 0.1s;
+    transition: background 0.15s;
 }
 
-.key-btn:active {
-    background: #e2e8f0;
-}
+.key-btn:hover { background: #e2e8f0; }
 
-.key-action { background: #fee2e2; color: #dc2626; }
-.key-clear { background: #fef3c7; color: #d97706; }
-
-/* MODAL NoSQL */
-.modal {
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0, 0, 0, 0.6);
+/* Calificación con Estrellas */
+.stars-selector-row {
     display: flex;
     justify-content: center;
-    align-items: center;
-    z-index: 100;
-    padding: 20px;
+    gap: 8px;
+    margin: 8px 0;
 }
 
-.modal-content {
-    background: white;
-    width: 100%;
-    max-width: 800px;
-    border-radius: var(--radius);
-    overflow: hidden;
-    max-height: 90vh;
-    display: flex;
-    flex-direction: column;
-}
-
-.modal-header {
-    background: #064e3b;
-    color: white;
-    padding: 16px 20px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.modal-header h3 { font-size: 18px; }
-.btn-close {
-    background: transparent;
-    border: none;
-    color: white;
-    font-size: 24px;
+.star-btn {
+    font-size: 32px;
+    color: #cbd5e1;
     cursor: pointer;
+    transition: color 0.15s;
 }
 
-.modal-body {
-    padding: 20px;
-    overflow-y: auto;
+.star-btn.active { color: #f59e0b; }
+
+.success-icon-huge {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: var(--kalo-green-light);
+    color: var(--kalo-green-primary);
+    font-size: 32px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 12px auto;
 }
 
+/* Toast Notificaciones */
+.toast {
+    position: fixed;
+    top: 55px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #111827;
+    color: #ffffff;
+    padding: 10px 20px;
+    border-radius: var(--kalo-radius-pill);
+    font-size: 13px;
+    font-weight: 600;
+    z-index: 100000;
+    box-shadow: var(--kalo-shadow-lg);
+    animation: fadeIn 0.3s ease;
+}
+
+.toast.toast-error { background: var(--kalo-red-danger); }
+.toast.toast-success { background: var(--kalo-green-primary); }
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translate(-50%, -10px); }
+    to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* Consola NoSQL para Evaluación */
 .nosql-actions-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 10px;
-    margin: 16px 0;
 }
 
 .btn-mql {
-    padding: 10px 14px;
-    border-radius: 8px;
-    border: 1px solid transparent;
-    font-weight: 500;
+    padding: 10px;
+    border: 1px solid var(--kalo-border);
+    border-radius: var(--kalo-radius-md);
+    background: #ffffff;
+    font-size: 12px;
+    font-weight: 600;
     cursor: pointer;
-    font-size: 13px;
     text-align: left;
 }
 
-.btn-mql-lookup { background: #e0f2fe; color: #0369a1; border-color: #bae6fd; }
-.btn-mql-group { background: #f3e8ff; color: #7e22ce; border-color: #e9d5ff; }
-.btn-mql-filter { background: #fef3c7; color: #b45309; border-color: #fde68a; }
-.btn-mql-find { background: #dcfce7; color: #15803d; border-color: #bbf7d0; }
+.btn-mql:hover { background: #f8fafc; }
 
 .console-output {
-    background: #111827;
-    color: #f3f4f6;
-    border-radius: 8px;
-    padding: 16px;
+    background: #1e293b;
+    color: #e2e8f0;
+    border-radius: var(--kalo-radius-md);
+    padding: 14px;
     font-family: monospace;
-    font-size: 13px;
-    margin-top: 10px;
+    font-size: 11px;
 }
 
-.console-header {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 10px;
-    font-size: 12px;
+.console-output pre {
+    background: #0f172a;
+    padding: 8px;
+    border-radius: 6px;
+    overflow-x: auto;
+    max-height: 160px;
 }
-
-.console-tag { color: #34d399; font-weight: bold; }
-.console-status { color: #9ca3af; }
-
-.mql-query-box {
-    margin-bottom: 12px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid #374151;
-}
-
-.mql-query-box pre {
-    color: #fbbf24;
-    white-space: pre-wrap;
-    margin-top: 4px;
-}
-
-.mql-result-box pre {
-    color: #6ee7b7;
-    max-height: 220px;
-    overflow-y: auto;
-    white-space: pre-wrap;
-    margin-top: 4px;
-}
-
-/* TOAST NOTIFICACIÓN */
-.toast {
-    position: fixed;
-    bottom: 24px;
-    right: 24px;
-    background: #1f2937;
-    color: white;
-    padding: 12px 20px;
-    border-radius: 8px;
-    font-size: 14px;
-    z-index: 1000;
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-    transition: opacity 0.3s;
-}
-
-.toast.toast-error { background: #ef4444; }
-.toast.toast-success { background: #10b981; }

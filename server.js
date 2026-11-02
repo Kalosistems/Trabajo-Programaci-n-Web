@@ -1,4 +1,15 @@
-require('dotenv').config();
+const fs = require('fs');
+const path = require('path');
+
+// Cargar variables de entorno desde .env o env
+if (fs.existsSync(path.join(__dirname, '.env'))) {
+    require('dotenv').config({ path: path.join(__dirname, '.env') });
+} else if (fs.existsSync(path.join(__dirname, 'env'))) {
+    require('dotenv').config({ path: path.join(__dirname, 'env') });
+} else {
+    require('dotenv').config();
+}
+
 const express = require('express');
 const cors = require('cors');
 const { conectarMongo } = require('./src/config/mongo');
@@ -46,4 +57,3 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Servidor Backend corriendo en http://localhost:${PORT}`);
 });
-
