@@ -2,13 +2,13 @@ const express = require('express');
 const router = express.Router();
 const mongoController = require('../Controladores/mongoController');
 
-// Rutas de consultas NoSQL en MongoDB Atlas
-router.get('/usuarios', mongoController.getUsuarios);
-router.get('/planes', mongoController.getPlanes);
-router.get('/pedidos-sin-join', mongoController.getPedidosSinJoin);
-router.get('/estadisticas', mongoController.getEstadisticasBiometricas);
+// Rutas de consultas NoSQL en MongoDB Atlas (en español y coherentes)
+router.get('/platillos', mongoController.obtenerPlatillos);
+router.get('/platillos-fit', mongoController.obtenerPlatillosLigeros);
+router.get('/platillos-con-restaurante', mongoController.obtenerPlatillosConRestaurante);
+router.get('/estadisticas', mongoController.obtenerEstadisticasBiometricas);
+router.get('/pedidos', mongoController.obtenerPedidos);
 router.post('/pedidos', mongoController.crearPedido);
-router.put('/usuarios/peso', mongoController.actualizarPesoUsuario);
+router.post('/pedidos/validar-pin', mongoController.validarPinEntrega);
 
 module.exports = router;
-

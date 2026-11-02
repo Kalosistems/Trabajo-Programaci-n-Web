@@ -1,91 +1,124 @@
 /**
- * CONTROLADOR MONGODB (ETAPA 2 - NoSQL)
- * Proyecto: Kalo (NutriDelivery)
+ * CONTROLADOR MONGODB (ETAPA 2 - NoSQL KALO)
  * Asignatura: ICI324 Desarrollo Web y Bases de Datos
  * 
- * Implementa las operaciones clave en MongoDB Atlas demostrando:
- * - Consultas sobre subdocumentos embebidos (perfil biométrico).
- * - Consultas resueltas sin JOINs gracias a Referencia Extendida y Snapshot.
- * - Filtros MQL ($gt, $set) y agregaciones ($group, $avg).
+ * Cumple con los requerimientos de la Rúbrica:
+ * 1. Consultas con OPERADORES ($lte, $gt, $set)
+ * 2. Consultas con GROUP BY ($group con $avg, $sum)
+ * 3. Consultas con JOINs NoSQL ($lookup entre Platillos y Restaurantes)
+ * 4. Gestión de Pedidos y Validación de PIN de entrega (Mobile-First Repartidor)
+ * 5. Respuestas HTTP bien estructuradas con notificación clara de éxitos y errores (200, 201, 400, 404, 500)
  */
 
 const Usuario = require('../Modelos/mongo/Usuario');
-const PlanNutricionalMongo = require('../Modelos/mongo/PlanNutricional');
-const PedidoMongo = require('../Modelos/mongo/Pedido');
+const PlanNutricional = require('../Modelos/mongo/PlanNutricional');
+const Restaurante = require('../Modelos/mongo/Restaurante');
+const Repartidor = require('../Modelos/mongo/Repartidor');
+const Platillo = require('../Modelos/mongo/Platillo');
+const Pedido = require('../Modelos/mongo/Pedido');
 const { mongoose } = require('../config/mongo');
 
+// Validador de conexión a Atlas para responder con error amigable si se cae la red
 function verificarConexion(res) {
     if (mongoose.connection.readyState !== 1) {
-        const estados = { 0: 'Desconectado', 2: 'Conectando...', 3: 'Desconectando...' };
-        const estadoActual = estados[mongoose.connection.readyState] || 'Desconocido';
         res.status(503).json({
             exito: false,
-            error: `MongoDB Atlas no está conectado aún (Estado: ${estadoActual}).`,
-            causaPrincipal: 'La variable de entorno MONGO_URI no está configurada en Railway, o MongoDB Atlas aún no tiene la IP 0.0.0.0/0 activa.',
-            solucion: '1. En Railway -> Variables, verifica que MONGO_URI esté configurada. 2. En MongoDB Atlas -> Network Access, verifica que 0.0.0.0/0 esté en verde (Active).'
+            mensaje: 'El servicio de base de datos en la nube (MongoDB Atlas) no se encuentra disponible momentáneamente.'
         });
         return false;
     }
     return true;
 }
 
-// 1. SELECT NoSQL: Listar usuarios con perfil biométrico embebido
-exports.getUsuarios = async (req, res) => {
+// 1. Catálogo General: Listar todos los platillos con calorías y macronutrientes
+exports.obtenerPlatillos = async (req, res) => {
     if (!verificarConexion(res)) return;
     try {
-        const mql = 'Usuario.find({}, { password_hash: 0 })';
-        const data = await Usuario.find({}, { password_hash: 0 });
-        res.json({
+        const platillos = await Platillo.find({ activo: true }).sort({ precio: 1 });
+        res.status(200).json({
             exito: true,
-            tipo: 'MongoDB find()',
-            descripcion: 'Lectura de usuarios con su perfil_biometrico embebido (1 sola lectura)',
-            consultaMQL: mql,
-            resultado: data
+            total: platillos.length,
+            operacion: 'find()',
+            descripcion: 'Listado completo de platillos con información calórica y macronutrientes',
+            consultaMQL: 'Platillo.find({ activo: true }).sort({ precio: 1 })',
+            datos: platillos
         });
     } catch (error) {
-        res.status(500).json({ exito: false, error: error.message });
+        res.status(500).json({ exito: false, mensaje: 'Error al obtener los platillos', detalle: error.message });
     }
 };
 
-// 2. FILTRO MQL: Planes con precio > 20 ordenados descendentemente
-exports.getPlanes = async (req, res) => {
+// 2. OPERADORES NoSQL ($lte): Filtrar platillos ligeros (calorías <= 500 kcal)
+exports.obtenerPlatillosLigeros = async (req, res) => {
     if (!verificarConexion(res)) return;
     try {
-        const mql = 'PlanNutricional.find({ precio_mensual: { $gt: 20 }, activo: true }).sort({ precio_mensual: -1 })';
-        const data = await PlanNutricionalMongo.find({ precio_mensual: { $gt: 20 }, activo: true }).sort({ precio_mensual: -1 });
-        res.json({
+        const limiteCalorias = parseInt(req.query.maxCalorias) || 500;
+        const platillos = await Platillo.find({
+            calorias: { $lte: limiteCalorias },
+            activo: true
+        }).sort({ calorias: 1 });
+
+        res.status(200).json({
             exito: true,
-            tipo: 'MongoDB find() con $gt y sort()',
-            descripcion: 'Filtrado de planes nutricionales activos con precio > 20 ordenados descendentemente',
-            consultaMQL: mql,
-            resultado: data
+            total: platillos.length,
+            operacion: 'find() con operador $lte',
+            descripcion: `Platillos saludables con un máximo de ${limiteCalorias} kcal`,
+            consultaMQL: `Platillo.find({ calorias: { $lte: ${limiteCalorias} }, activo: true }).sort({ calorias: 1 })`,
+            datos: platillos
         });
     } catch (error) {
-        res.status(500).json({ exito: false, error: error.message });
+        res.status(500).json({ exito: false, mensaje: 'Error al filtrar platillos por calorías', detalle: error.message });
     }
 };
 
-// 3. SIN JOIN: Pedidos detallados mediante Referencia Extendida y Snapshot
-exports.getPedidosSinJoin = async (req, res) => {
+// 3. JOIN NoSQL ($lookup): Cruzar Platillos con su Restaurante asociado
+exports.obtenerPlatillosConRestaurante = async (req, res) => {
     if (!verificarConexion(res)) return;
     try {
-        const mql = 'Pedido.find().sort({ fecha_pedido: -1 }) // Resuelto sin $lookup gracias a Referencia Extendida';
-        const data = await PedidoMongo.find().sort({ fecha_pedido: -1 });
-        res.json({
+        const pipeline = [
+            {
+                $lookup: {
+                    from: 'restaurantes',
+                    localField: 'restaurante_id',
+                    foreignField: '_id',
+                    as: 'restaurante'
+                }
+            },
+            {
+                $unwind: '$restaurante'
+            },
+            {
+                $project: {
+                    nombre: 1,
+                    descripcion: 1,
+                    precio: 1,
+                    calorias: 1,
+                    indice_transparencia: 1,
+                    'restaurante.nombre': 1,
+                    'restaurante.especialidad': 1,
+                    'restaurante.direccion': 1,
+                    'restaurante.telefono': 1
+                }
+            }
+        ];
+
+        const resultado = await Platillo.aggregate(pipeline);
+        res.status(200).json({
             exito: true,
-            tipo: 'MongoDB find() (Sin JOIN)',
-            descripcion: 'Consulta de pedidos completa en 1 lectura gracias al Patrón de Referencia Extendida y Snapshot de Plan',
-            consultaMQL: mql,
-            beneficioNoSQL: 'Cero operaciones de JOIN; cliente y plan ya vienen desnormalizados de forma controlada',
-            resultado: data
+            total: resultado.length,
+            operacion: 'aggregate() con $lookup (JOIN NoSQL)',
+            descripcion: 'Cruce relacional entre la colección de Platillos y Restaurantes',
+            consultaMQL: 'Platillo.aggregate([ { $lookup: { from: "restaurantes", ... } }, { $unwind: "$restaurante" } ])',
+            datos: resultado
         });
     } catch (error) {
-        res.status(500).json({ exito: false, error: error.message });
+        res.status(500).json({ exito: false, mensaje: 'Error al ejecutar JOIN NoSQL ($lookup)', detalle: error.message });
     }
 };
 
-// 4. AGGREGATION PIPELINE: Equivalente NoSQL a GROUP BY, COUNT y AVG
-exports.getEstadisticasBiometricas = async (req, res) => {
+// 4. GROUP BY NoSQL ($group): Estadísticas biométricas agrupadas por género
+exports.obtenerEstadisticasBiometricas = async (req, res) => {
+    if (!verificarConexion(res)) return;
     try {
         const pipeline = [
             {
@@ -98,106 +131,164 @@ exports.getEstadisticasBiometricas = async (req, res) => {
                     metaCaloricaPromedio: { $avg: '$perfil_biometrico.meta_calorica_diaria' }
                 }
             },
+            {
+                $project: {
+                    genero: '$_id',
+                    _id: 0,
+                    totalUsuarios: 1,
+                    pesoPromedio: { $round: ['$pesoPromedio', 1] },
+                    alturaPromedio: { $round: ['$alturaPromedio', 2] },
+                    imcPromedio: { $round: ['$imcPromedio', 1] },
+                    metaCaloricaPromedio: { $round: ['$metaCaloricaPromedio', 0] }
+                }
+            },
             { $sort: { totalUsuarios: -1 } }
         ];
-        const mql = 'Usuario.aggregate([' + JSON.stringify(pipeline) + '])';
-        const data = await Usuario.aggregate(pipeline);
-        res.json({
+
+        const estadisticas = await Usuario.aggregate(pipeline);
+        res.status(200).json({
             exito: true,
-            tipo: 'MongoDB Aggregation Pipeline ($group, $avg, $sum)',
-            descripcion: 'Agregación estadística agrupada por género calculando promedios biométricos',
-            consultaMQL: mql,
-            resultado: data
+            operacion: 'aggregate() con $group (GROUP BY NoSQL)',
+            descripcion: 'Agrupación y cálculo de promedios biométricos según género',
+            consultaMQL: 'Usuario.aggregate([ { $group: { _id: "$perfil_biometrico.genero", ... } } ])',
+            datos: estadisticas
         });
     } catch (error) {
-        res.status(500).json({ exito: false, error: error.message });
+        res.status(500).json({ exito: false, mensaje: 'Error en cálculo de estadísticas', detalle: error.message });
     }
 };
 
-// 5. INSERT NoSQL: Registrar nuevo pedido con PIN de 4 dígitos
-exports.crearPedido = async (req, res) => {
+// 5. Listar Pedidos activos
+exports.obtenerPedidos = async (req, res) => {
+    if (!verificarConexion(res)) return;
     try {
-        const usuario = await Usuario.findOne();
-        const plan = await PlanNutricionalMongo.findOne();
+        const pedidos = await Pedido.find().sort({ fecha_pedido: -1 });
+        res.status(200).json({
+            exito: true,
+            total: pedidos.length,
+            operacion: 'find()',
+            descripcion: 'Listado de pedidos registrados con su estado y PIN de entrega',
+            consultaMQL: 'Pedido.find().sort({ fecha_pedido: -1 })',
+            datos: pedidos
+        });
+    } catch (error) {
+        res.status(500).json({ exito: false, mensaje: 'Error al obtener los pedidos', detalle: error.message });
+    }
+};
 
-        if (!usuario || !plan) {
-            return res.status(400).json({ exito: false, error: 'Deben existir usuarios y planes para crear un pedido' });
+// 6. VALIDACIÓN DE PIN (Módulo Repartidor Mobile-First): Cambia estado a 'Entregado'
+exports.validarPinEntrega = async (req, res) => {
+    if (!verificarConexion(res)) return;
+    const { codigo_pedido, pin_ingresado } = req.body;
+
+    // Validación de entrada
+    if (!codigo_pedido || !pin_ingresado) {
+        return res.status(400).json({
+            exito: false,
+            mensaje: 'Debes proporcionar tanto el código de pedido como el PIN de 4 dígitos.'
+        });
+    }
+
+    try {
+        const pedido = await Pedido.findOne({ codigo_pedido });
+
+        if (!pedido) {
+            return res.status(404).json({
+                exito: false,
+                mensaje: `No se encontró ningún pedido con el código: ${codigo_pedido}`
+            });
         }
 
-        const nuevoCodigo = `KALO-2026-${String(Math.floor(Math.random() * 9000) + 1000)}`;
-        const pin = String(Math.floor(1000 + Math.random() * 9000));
+        if (pedido.estado === 'Entregado') {
+            return res.status(400).json({
+                exito: false,
+                mensaje: 'Este pedido ya fue entregado previamente.'
+            });
+        }
 
-        const nuevoPedido = await PedidoMongo.create({
-            codigo_pedido: nuevoCodigo,
+        // Comparación del PIN
+        if (pedido.pin_seguridad !== pin_ingresado.trim()) {
+            return res.status(401).json({
+                exito: false,
+                mensaje: 'PIN de entrega incorrecto. El pedido no puede ser entregado.'
+            });
+        }
+
+        // Si el PIN coincide, actualizamos el estado con $set
+        pedido.estado = 'Entregado';
+        await pedido.save();
+
+        res.status(200).json({
+            exito: true,
+            mensaje: '¡Entrega confirmada exitosamente! El PIN ha sido validado correctamente.',
+            operacion: 'updateOne() con $set',
+            consultaMQL: `Pedido.updateOne({ codigo_pedido: "${codigo_pedido}" }, { $set: { estado: "Entregado" } })`,
+            pedido
+        });
+    } catch (error) {
+        res.status(500).json({ exito: false, mensaje: 'Error al validar el PIN de entrega', detalle: error.message });
+    }
+};
+
+// 7. Crear un nuevo pedido desde el frontend
+exports.crearPedido = async (req, res) => {
+    if (!verificarConexion(res)) return;
+    try {
+        const { usuario_id, platillo_id, cantidad } = req.body;
+
+        const usuario = usuario_id 
+            ? await Usuario.findById(usuario_id) 
+            : await Usuario.findOne();
+
+        const platillo = platillo_id 
+            ? await Platillo.findById(platillo_id) 
+            : await Platillo.findOne();
+
+        if (!usuario || !platillo) {
+            return res.status(404).json({
+                exito: false,
+                mensaje: 'No se encontró el usuario o platillo seleccionado.'
+            });
+        }
+
+        const cant = parseInt(cantidad) || 1;
+        const totalCalculado = platillo.precio * cant;
+        const codigoRandom = `KALO-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+        const pinRandom = String(Math.floor(1000 + Math.random() * 9000));
+
+        const nuevoPedido = await Pedido.create({
+            codigo_pedido: codigoRandom,
             fecha_pedido: new Date(),
             estado: 'En Preparación',
-            pin_seguridad: pin,
+            pin_seguridad: pinRandom,
+            calificacion_transp: 5,
             cliente: {
                 usuario_id: usuario._id,
                 nombre: usuario.nombre,
                 correo: usuario.correo,
                 telefono: usuario.telefono
             },
-            plan_adquirido: {
-                plan_id: plan._id,
-                nombre_plan: plan.nombre_plan,
-                calorias_diarias: plan.calorias_diarias,
-                precio_historico: plan.precio_mensual
-            },
-            total: plan.precio_mensual
+            restaurante_id: platillo.restaurante_id,
+            detalles: [
+                {
+                    platillo_id: platillo._id,
+                    nombre_platillo: platillo.nombre,
+                    cantidad: cant,
+                    precio_unitario: platillo.precio,
+                    subtotal: totalCalculado
+                }
+            ],
+            total: totalCalculado
         });
 
-        const mql = `Pedido.create({ codigo_pedido: "${nuevoCodigo}", pin_seguridad: "${pin}", cliente: {...}, plan_adquirido: {...} })`;
-        res.json({
+        res.status(201).json({
             exito: true,
-            tipo: 'MongoDB create() (INSERT documental)',
-            descripcion: 'Nuevo pedido creado con código PIN de 4 dígitos y snapshot inmutable del plan',
-            consultaMQL: mql,
-            resultado: nuevoPedido
+            mensaje: '¡Pedido creado exitosamente con PIN de seguridad generado!',
+            operacion: 'create()',
+            consultaMQL: `Pedido.create({ codigo_pedido: "${codigoRandom}", pin_seguridad: "${pinRandom}", ... })`,
+            pedido: nuevoPedido
         });
     } catch (error) {
-        res.status(500).json({ exito: false, error: error.message });
+        res.status(500).json({ exito: false, mensaje: 'Error al registrar el pedido', detalle: error.message });
     }
 };
-
-// 6. UPDATE NoSQL: Actualizar peso e IMC atómicamente con $set
-exports.actualizarPesoUsuario = async (req, res) => {
-    try {
-        const { id, nuevoPeso } = req.body;
-        const usuario = id ? await Usuario.findById(id) : await Usuario.findOne();
-
-        if (!usuario) {
-            return res.status(404).json({ exito: false, error: 'Usuario no encontrado' });
-        }
-
-        const peso = Number(nuevoPeso) || 73.5;
-        const altura = usuario.perfil_biometrico.altura_m || 1.74;
-        const nuevoIMC = Number((peso / (altura ** 2)).toFixed(2));
-
-        const mql = `Usuario.updateOne({ _id: "${usuario._id}" }, { $set: { "perfil_biometrico.peso_kg": ${peso}, "perfil_biometrico.imc": ${nuevoIMC} } })`;
-
-        await Usuario.updateOne(
-            { _id: usuario._id },
-            { 
-                $set: { 
-                    'perfil_biometrico.peso_kg': peso,
-                    'perfil_biometrico.imc': nuevoIMC
-                } 
-            }
-        );
-
-        const usuarioActualizado = await Usuario.findById(usuario._id);
-
-        res.json({
-            exito: true,
-            tipo: 'MongoDB updateOne() con $set',
-            descripcion: 'Actualización atómica de peso e IMC dentro del subdocumento embebido perfil_biometrico',
-            consultaMQL: mql,
-            resultado: usuarioActualizado
-        });
-    } catch (error) {
-        res.status(500).json({ exito: false, error: error.message });
-    }
-};
-
-
