@@ -1,18 +1,11 @@
 /**
  * LÓGICA DE FRONTEND KALO (ETAPA 2 - NoSQL MONGODB ATLAS)
- * Incluye:
- * - Login por roles (Cliente, Restaurante, Repartidor)
- * - Carrito de compras con cálculo calórico acumulado
- * - Publicación de platillos desde el Restaurante
- * - Repartidor Mobile-First con aceptación de pedido y teclado PIN
- * - Consola NoSQL para evaluación docente ($lookup, $group, etc.)
  */
 
 let usuarioActual = null;
 let platillosGlobales = [];
-let carrito = []; // Items en carrito { platillo_id, nombre, precio, calorias, cantidad }
+let carrito = [];
 
-// 1. NOTIFICACIONES TOAST (Manejo amigable de respuestas)
 function mostrarToast(mensaje, tipo = 'success') {
     const toast = document.getElementById('toast');
     toast.textContent = mensaje;
@@ -24,14 +17,12 @@ function mostrarToast(mensaje, tipo = 'success') {
     }, 4000);
 }
 
-// 2. AUTOCOMPLETADO RÁPIDO PARA PRESENTACIÓN
 function autocompletarLogin(correo, pass) {
     document.getElementById('loginCorreo').value = correo;
     document.getElementById('loginPassword').value = pass;
     document.getElementById('formLogin').dispatchEvent(new Event('submit'));
 }
 
-// 3. PROCESO DE LOGIN
 document.getElementById('formLogin').addEventListener('submit', async (e) => {
     e.preventDefault();
     const correo = document.getElementById('loginCorreo').value;
@@ -58,12 +49,10 @@ document.getElementById('formLogin').addEventListener('submit', async (e) => {
     }
 });
 
-// 4. CAMBIO DE VISTA SEGÚN ROL
 function mostrarAppPrincipal() {
     document.getElementById('pantallaLogin').classList.add('hidden');
     document.getElementById('appPrincipal').classList.remove('hidden');
 
-    // Ocultar todas las vistas
     document.getElementById('vistaCliente').classList.add('hidden');
     document.getElementById('vistaRestaurante').classList.add('hidden');
     document.getElementById('vistaRepartidor').classList.add('hidden');
@@ -87,6 +76,7 @@ function mostrarAppPrincipal() {
         btnCarrito.classList.add('hidden');
         document.getElementById('vistaRestaurante').classList.remove('hidden');
         cargarPanelRestaurante();
+        actualizarBarraTransparencia();
     } else if (usuarioActual.rol === 'repartidor') {
         badge.textContent = 'Rol: Repartidor (Mobile-First)';
         badge.className = 'badge badge-success';
@@ -96,7 +86,6 @@ function mostrarAppPrincipal() {
     }
 }
 
-// 5. CERRAR SESIÓN
 function cerrarSesion() {
     usuarioActual = null;
     carrito = [];
@@ -108,7 +97,7 @@ function cerrarSesion() {
 }
 
 /* =======================================================
-   VISTA 1: CLIENTE & CARRITO DE COMPRAS
+   VISTA 1: CLIENTE & CARRITO
 ======================================================= */
 function cargarPerfilBiometrico() {
     const bio = usuarioActual.perfil_biometrico;
@@ -129,7 +118,7 @@ async function cargarCatalogoPlatillos() {
             renderizarPlatillos(platillosGlobales);
         }
     } catch (error) {
-        mostrarToast('Error al cargar catálogo de platillos', 'error');
+        mostrarToast('Error al cargar platillos', 'error');
     }
 }
 
@@ -150,25 +139,27 @@ function renderizarPlatillos(lista) {
                 
                 <div class="macros-box">
                     <div class="macro-item">
-                        <span class="macro-val">${p.macronutrientes.proteinas_g}g</span>
+                        <span class="macro-val">${p.macronutrientes?.proteinas_g || 0}g</span>
                         Proteína
                     </div>
                     <div class="macro-item">
-                        <span class="macro-val">${p.macronutrientes.carbohidratos_g}g</span>
+                        <span class="macro-val">${p.macronutrientes?.carbohidratos_g || 0}g</span>
                         Carbos
                     </div>
                     <div class="macro-item">
-                        <span class="macro-val">${p.macronutrientes.grasas_g}g</span>
+                        <span class="macro-val">${p.macronutrientes?.grasas_g || 0}g</span>
                         Grasas
                     </div>
                 </div>
                 
-                <div style="font-size:11px; color:#059669; font-weight:600; margin-bottom:10px;">
-                    ✓ Transparencia Nutricional: ${p.indice_transparencia || 95}%
+                <div style="font-size:11px; margin-bottom:4px; color:${p.indice_transparencia >= 80 ? '#059669' : '#d97706'}; font-weight:600;">
+                    ✓ Índice de Transparencia: ${p.indice_transparencia}%
                 </div>
+                ${p.peso_porcion_g ? `<small style="font-size:10px; color:#6b7280; display:block;">⚖️ Porción: ${p.peso_porcion_g}g</small>` : ''}
+                ${p.alergenos && p.alergenos !== 'No declarados' ? `<small style="font-size:10px; color:#6b7280; display:block;">⚠️ Alérgenos: ${p.alergenos}</small>` : ''}
             </div>
             <div>
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px;">
                     <strong style="font-size:16px; color:#111827;">$${p.precio.toLocaleString('es-CL')}</strong>
                     <button class="btn btn-primary btn-sm" onclick="agregarAlCarrito('${p._id}', '${p.nombre}', ${p.precio}, ${p.calorias})">
                         + Agregar al Carrito
@@ -180,7 +171,6 @@ function renderizarPlatillos(lista) {
     });
 }
 
-// Filtro NoSQL con Operador $lte
 async function aplicarFiltroCalorias() {
     const valor = document.getElementById('selectFiltroCalorias').value;
     if (valor === 'todas') {
@@ -194,12 +184,11 @@ async function aplicarFiltroCalorias() {
                 mostrarToast(`Filtro NoSQL ($lte): ${data.total} platillos encontrados`, 'success');
             }
         } catch (e) {
-            mostrarToast('Error al filtrar platillos', 'error');
+            mostrarToast('Error al filtrar', 'error');
         }
     }
 }
 
-// CARRITO DE COMPRAS INTERACTIVO
 function agregarAlCarrito(platilloId, nombre, precio, calorias) {
     const itemExistente = carrito.find(it => it.platillo_id === platilloId);
     if (itemExistente) {
@@ -281,7 +270,6 @@ function cambiarCantidadCarrito(index, delta) {
     renderizarContenidoCarrito();
 }
 
-// Confirmar pedido desde el carrito
 async function confirmarCompraCarrito() {
     if (carrito.length === 0) {
         mostrarToast('Tu carrito está vacío', 'error');
@@ -316,7 +304,6 @@ async function confirmarCompraCarrito() {
     }
 }
 
-// Cargar pedidos para ver el PIN
 async function cargarPedidosCliente() {
     try {
         const res = await fetch('/api/mongo/pedidos');
@@ -359,12 +346,48 @@ async function cargarPedidosCliente() {
 }
 
 /* =======================================================
-   VISTA 2: RESTAURANTE (Crear Platillos y Ver Cocina)
+   VISTA 2: RESTAURANTE (Cálculo Dinámico de Transparencia)
 ======================================================= */
+function actualizarBarraTransparencia() {
+    let porcentaje = 50; // Base obligatoria
+
+    const prot = parseFloat(document.getElementById('platoProteina').value) || 0;
+    const carb = parseFloat(document.getElementById('platoCarbos').value) || 0;
+    const gras = parseFloat(document.getElementById('platoGrasas').value) || 0;
+    const peso = parseFloat(document.getElementById('platoPesoPorcion').value) || 0;
+    const aler = document.getElementById('platoAlergenos').value.trim();
+    const limpio = document.getElementById('platoLimpio').checked;
+
+    if (prot > 0) porcentaje += 10;
+    if (carb > 0) porcentaje += 10;
+    if (gras > 0) porcentaje += 10;
+    if (peso > 0) porcentaje += 10;
+    if (aler.length > 3) porcentaje += 5;
+    if (limpio) porcentaje += 5;
+
+    porcentaje = Math.min(porcentaje, 100);
+
+    const tag = document.getElementById('transparenciaPorcentajeTag');
+    const barra = document.getElementById('transparenciaBarraVisual');
+
+    tag.textContent = `${porcentaje}%`;
+    barra.style.width = `${porcentaje}%`;
+
+    if (porcentaje >= 80) {
+        tag.style.color = '#059669';
+        barra.style.background = '#10b981';
+    } else if (porcentaje >= 65) {
+        tag.style.color = '#d97706';
+        barra.style.background = '#f59e0b';
+    } else {
+        tag.style.color = '#dc2626';
+        barra.style.background = '#ef4444';
+    }
+}
+
 async function cargarPanelRestaurante() {
     document.getElementById('tituloRestaurante').textContent = `🏪 ${usuarioActual.nombre}`;
     try {
-        // Platillos del restaurante
         const resPlat = await fetch('/api/mongo/platillos');
         const dataPlat = await resPlat.json();
         const contenedorPlat = document.getElementById('platillosRestauranteList');
@@ -376,13 +399,16 @@ async function cargarPanelRestaurante() {
                 item.className = 'item-row';
                 item.innerHTML = `
                     <strong>${pl.nombre}</strong> (${pl.calorias} kcal) - $${pl.precio.toLocaleString('es-CL')}<br>
-                    <small style="color:#059669;">Transparencia: ${pl.indice_transparencia}% | P: ${pl.macronutrientes.proteinas_g}g | C: ${pl.macronutrientes.carbohidratos_g}g | G: ${pl.macronutrientes.grasas_g}g</small>
+                    <small style="color:${pl.indice_transparencia >= 80 ? '#059669' : '#d97706'}; font-weight:600;">
+                        Transparencia: ${pl.indice_transparencia}%
+                    </small>
+                    ${pl.peso_porcion_g ? ` · <small>Porción: ${pl.peso_porcion_g}g</small>` : ''}
+                    ${pl.macronutrientes?.proteinas_g ? ` · <small>Prot: ${pl.macronutrientes.proteinas_g}g</small>` : ''}
                 `;
                 contenedorPlat.appendChild(item);
             });
         }
 
-        // Pedidos
         const resPed = await fetch('/api/mongo/pedidos');
         const dataPed = await resPed.json();
         const contenedorPed = document.getElementById('pedidosCocinaList');
@@ -406,18 +432,18 @@ async function cargarPanelRestaurante() {
     }
 }
 
-// Formulario de Crear Platillo (Restaurante)
 document.getElementById('formNuevoPlatillo').addEventListener('submit', async (e) => {
     e.preventDefault();
     const platilloData = {
         nombre: document.getElementById('platoNombre').value,
-        descripcion: document.getElementById('platoDescripcion').value,
         precio: parseFloat(document.getElementById('platoPrecio').value),
         calorias: parseInt(document.getElementById('platoCalorias').value),
-        proteinas: parseFloat(document.getElementById('platoProteina').value),
-        carbos: parseFloat(document.getElementById('platoCarbos').value),
-        grasas: parseFloat(document.getElementById('platoGrasas').value),
-        indice_transparencia: 96,
+        proteinas: document.getElementById('platoProteina').value,
+        carbos: document.getElementById('platoCarbos').value,
+        grasas: document.getElementById('platoGrasas').value,
+        peso_porcion: document.getElementById('platoPesoPorcion').value,
+        alergenos: document.getElementById('platoAlergenos').value,
+        ingredientes_limpios: document.getElementById('platoLimpio').checked,
         restaurante_id: usuarioActual.id
     };
 
@@ -430,14 +456,15 @@ document.getElementById('formNuevoPlatillo').addEventListener('submit', async (e
 
         const data = await res.json();
         if (data.exito) {
-            mostrarToast('✅ Platillo publicado exitosamente en MongoDB Atlas', 'success');
+            mostrarToast(`✅ ${data.mensaje}`, 'success');
             document.getElementById('formNuevoPlatillo').reset();
+            actualizarBarraTransparencia();
             cargarPanelRestaurante();
         } else {
-            mostrarToast(data.mensaje || 'Error al guardar platillo', 'error');
+            mostrarToast(data.mensaje || (data.detalle ? `Error: ${data.detalle}` : 'Error al guardar platillo'), 'error');
         }
     } catch (err) {
-        mostrarToast('Error al registrar platillo', 'error');
+        mostrarToast('Error de red al registrar platillo: ' + err.message, 'error');
     }
 });
 
@@ -455,7 +482,6 @@ async function cargarPanelRepartidor() {
         const res = await fetch('/api/mongo/pedidos');
         const data = await res.json();
         if (data.exito && data.datos.length > 0) {
-            // Priorizamos un pedido En Camino o En Preparación
             pedidoAsignadoActual = data.datos.find(p => p.estado === 'En Camino') 
                                 || data.datos.find(p => p.estado === 'En Preparación') 
                                 || data.datos[0];
@@ -488,7 +514,6 @@ async function cargarPanelRepartidor() {
     }
 }
 
-// Aceptar pedido (pasa a 'En Camino')
 async function aceptarPedidoReparto() {
     if (!pedidoAsignadoActual) return;
     try {
@@ -513,7 +538,6 @@ async function aceptarPedidoReparto() {
     }
 }
 
-// Teclado PIN
 function teclearPin(num) {
     if (pinIngresado.length < 4) {
         pinIngresado += num;
@@ -535,7 +559,6 @@ function actualizarDisplayPin() {
     document.getElementById('inputPinPantalla').value = pinIngresado;
 }
 
-// Validar PIN de entrega
 async function enviarValidacionPin() {
     if (pinIngresado.length !== 4) {
         mostrarToast('Debes ingresar los 4 dígitos del PIN', 'error');
