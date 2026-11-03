@@ -2,9 +2,6 @@
 
 > **Asignatura:** ICI324 Desarrollo Web y Bases de Datos — Universidad de Valparaíso  
 > **Integrantes:** Ariadna Espejo — Benjamín Figueroa  
-> **Entrega:** Entrega 2 (Migración NoSQL MongoDB Atlas + API REST + Frontend Oficial)  
-> **Documento Oficial de Entrega:** [INFORME_ENTREGA_2_KALO.md](INFORME_ENTREGA_2_KALO.md)
-
 ---
 
 ## 📌 Resumen del Proyecto
