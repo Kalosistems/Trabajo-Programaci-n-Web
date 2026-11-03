@@ -284,10 +284,10 @@ async function finalizarRegistro(e) {
                 mostrarPantallaOnboarding('resultadoIMC');
             } else if (rolRegistroSeleccionado === 'restaurante') {
                 mostrarToast(`✅ Restaurante "${nombre}" registrado exitosamente`, 'success');
-                activarDemoRestaurante();
+                iniciarSesionRestaurante(usuarioActual);
             } else {
                 mostrarToast(`✅ Repartidor "${nombre}" registrado exitosamente`, 'success');
-                activarDemoRepartidor();
+                iniciarSesionRepartidor(usuarioActual);
             }
         } else {
             mostrarToast(data.mensaje || 'No se pudo crear la cuenta', 'error');
@@ -323,9 +323,9 @@ async function procesarLogin(e) {
             if (usuarioActual.rol === 'cliente') {
                 iniciarExploracionComprador();
             } else if (usuarioActual.rol === 'restaurante') {
-                activarDemoRestaurante();
+                iniciarSesionRestaurante(usuarioActual);
             } else if (usuarioActual.rol === 'repartidor') {
-                activarDemoRepartidor();
+                iniciarSesionRepartidor(usuarioActual);
             }
         } else {
             // Mostrar error idéntico al Mockup 1.3
@@ -344,8 +344,99 @@ function cerrarSesion() {
 }
 
 // ==========================================================================
-// 3. ACCESOS RÁPIDOS DEMO (PARA PRESENTACIÓN)
+// 3. INICIO DE SESIÓN Y VISTAS ESPECÍFICAS POR ROL
 // ==========================================================================
+
+// Iniciar sesión y poblar UI para Restaurante dinámico
+function iniciarSesionRestaurante(usuario) {
+    usuarioActual = usuario;
+    ocultarTodasLasVistasPrincipales();
+    document.getElementById('seccionRestaurante').classList.remove('hidden');
+
+    actualizarInterfazRestaurante(usuario);
+    cambiarTabRestaurante('pedidos');
+    cargarTablaPlatillosRestaurante();
+    cargarEvaluacionesRestaurante();
+    cargarRepartidoresEnSelect();
+    mostrarToast(`Sesión activa: ${usuario.nombre} (Restaurante)`, 'success');
+}
+
+function actualizarInterfazRestaurante(usuario) {
+    if (!usuario) return;
+    const lblSide = document.getElementById('lblSideNombreRestaurante');
+    if (lblSide) lblSide.textContent = usuario.nombre || 'Restaurante Kalo';
+
+    const lblTop = document.getElementById('lblTopRestauranteNombre');
+    if (lblTop) lblTop.textContent = `${usuario.nombre} · ${usuario.direccion || usuario.especialidad || 'Cocina Certificada'}`;
+
+    const inputNombre = document.getElementById('inputRestNombreLocal');
+    if (inputNombre) inputNombre.value = usuario.nombre || '';
+
+    const inputDir = document.getElementById('inputRestDireccion');
+    if (inputDir) inputDir.value = usuario.direccion || '';
+
+    const inputTel = document.getElementById('inputRestTelefono');
+    if (inputTel) inputTel.value = usuario.telefono || '';
+
+    const inputEsp = document.getElementById('inputRestEspecialidad');
+    if (inputEsp) inputEsp.value = usuario.especialidad || '';
+}
+
+// Guardar cambios de "Mi Local" en MongoDB Atlas
+async function guardarDatosMiLocal() {
+    if (!usuarioActual || usuarioActual.rol !== 'restaurante') {
+        mostrarToast('Debes haber iniciado sesión como restaurante', 'error');
+        return;
+    }
+    const nombre = document.getElementById('inputRestNombreLocal').value.trim();
+    const direccion = document.getElementById('inputRestDireccion').value.trim();
+    const telefono = document.getElementById('inputRestTelefono').value.trim();
+    const especialidad = document.getElementById('inputRestEspecialidad').value.trim();
+
+    try {
+        const res = await fetch('/api/mongo/restaurantes/mi-local', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                restaurante_id: usuarioActual.id,
+                nombre, direccion, telefono, especialidad
+            })
+        });
+        const data = await res.json();
+        if (data.exito) {
+            usuarioActual.nombre = nombre;
+            usuarioActual.direccion = direccion;
+            usuarioActual.telefono = telefono;
+            usuarioActual.especialidad = especialidad;
+            actualizarInterfazRestaurante(usuarioActual);
+            mostrarToast('✅ Datos del local actualizados en MongoDB Atlas', 'success');
+        } else {
+            mostrarToast(data.mensaje || 'Error al guardar', 'error');
+        }
+    } catch (e) {
+        mostrarToast('Error de conexión al actualizar local', 'error');
+    }
+}
+
+// Iniciar sesión y poblar UI para Repartidor dinámico
+function iniciarSesionRepartidor(usuario) {
+    usuarioActual = usuario;
+    ocultarTodasLasVistasPrincipales();
+    document.getElementById('seccionRepartidor').classList.remove('hidden');
+
+    const repNom = document.getElementById('repNombreHeader');
+    if (repNom) repNom.textContent = `🛵 ${usuario.nombre}`;
+
+    const repVehiculo = document.getElementById('repInfoVehiculo');
+    if (repVehiculo) {
+        repVehiculo.textContent = `Vehículo: ${usuario.vehiculo || 'Motocicleta'} · Tel: ${usuario.telefono || '+569...'}`;
+    }
+
+    cargarPedidoRepartidor();
+    mostrarToast(`Sesión activa: ${usuario.nombre} (Repartidor)`, 'success');
+}
+
+// Accesos Demo rápidos
 function activarDemoCliente() {
     usuarioActual = {
         id: "6620f1a4e13b8a1c90000001",
@@ -367,19 +458,29 @@ function activarDemoCliente() {
 }
 
 function activarDemoRestaurante() {
-    ocultarTodasLasVistasPrincipales();
-    document.getElementById('seccionRestaurante').classList.remove('hidden');
-    cambiarTabRestaurante('pedidos');
-    cargarTablaPlatillosRestaurante();
-    cargarEvaluacionesRestaurante();
-    mostrarToast('Sesión activa: Verde Vivo (Restaurante)', 'success');
+    iniciarSesionRestaurante({
+        id: "6620f1a4e13b8a1c90000010",
+        nombre: "Verde Vivo",
+        correo: "contacto@verdevivo.cl",
+        rol: "restaurante",
+        especialidad: "Comida saludable y bowls funcionales",
+        direccion: "Av. Providencia 1240, Providencia, Santiago",
+        telefono: "+569 8765 4321",
+        calificacion_promedio: 4.9
+    });
 }
 
 function activarDemoRepartidor() {
-    ocultarTodasLasVistasPrincipales();
-    document.getElementById('seccionRepartidor').classList.remove('hidden');
-    cargarPedidoRepartidor();
-    mostrarToast('Sesión activa: Carlos (Repartidor Mobile-First)', 'success');
+    iniciarSesionRepartidor({
+        id: "6620f1a4e13b8a1c90000020",
+        nombre: "Carlos Repartidor",
+        correo: "carlos.reparto@kalo.cl",
+        rol: "repartidor",
+        telefono: "+569 6611 2233",
+        vehiculo: "Motocicleta",
+        estado: "Disponible",
+        calificacion: 5.0
+    });
 }
 
 // Iniciar aplicación móvil del comprador
@@ -494,6 +595,8 @@ function aplicarFiltrosYRenderizar() {
         const prot = plato.macronutrientes?.proteinas_g || 38;
         const carb = plato.macronutrientes?.carbohidratos_g || 45;
         const gras = plato.macronutrientes?.grasas_g || 18;
+        const restNombre = plato.restaurante_id?.nombre || 'Verde Vivo';
+        const restDireccion = plato.restaurante_id?.direccion || 'Valparaíso';
 
         card.innerHTML = `
             <div class="dish-card-img-wrap">
@@ -502,7 +605,7 @@ function aplicarFiltrosYRenderizar() {
             </div>
             <div class="dish-card-body">
                 <h4>${plato.nombre}</h4>
-                <span class="dish-card-rest-name">Verde Vivo · Valparaíso</span>
+                <span class="dish-card-rest-name">${restNombre} · ${restDireccion}</span>
                 <span class="dish-calorie-pill">${plato.calorias} Kcal / porción</span>
                 
                 <div class="dish-macros-pills">
@@ -638,7 +741,48 @@ function agregarDirectoAlCarrito(id) {
     mostrarToast(`Agregaste "${plato.nombre}" al carrito`, 'success');
 }
 
+let itemPendienteCambioRestaurante = null;
+
 function agregarItemAlCarrito(plato, cantidad) {
+    const rId = String(plato.restaurante_id?._id || plato.restaurante_id || '');
+    const rNom = plato.restaurante_id?.nombre || 'Verde Vivo';
+
+    // Regla de negocio Delivery: El carrito solo puede contener platillos de 1 restaurante
+    if (carrito.length > 0) {
+        const restActualId = String(carrito[0].restaurante_id || '');
+        const restActualNom = carrito[0].restaurante_nombre || 'otro restaurante';
+
+        if (restActualId && rId && restActualId !== rId) {
+            itemPendienteCambioRestaurante = { plato, cantidad, rId, rNom };
+            const textoEl = document.getElementById('lblTextoCambioRestaurante');
+            if (textoEl) {
+                textoEl.innerHTML = `Tu carrito actual contiene platillos de <strong>${restActualNom}</strong>.<br><br>Solo puedes pedir a un restaurante a la vez en Kalo. ¿Deseas vaciar tu carrito para pedir a <strong>${rNom}</strong>?`;
+            }
+            document.getElementById('modalCambioRestauranteCarrito')?.classList.remove('hidden');
+            return;
+        }
+    }
+
+    insertarItemEnCarrito(plato, cantidad, rId, rNom);
+}
+
+function cancelarCambioRestauranteCarrito() {
+    itemPendienteCambioRestaurante = null;
+    document.getElementById('modalCambioRestauranteCarrito')?.classList.add('hidden');
+}
+
+function confirmarCambioRestauranteCarrito() {
+    document.getElementById('modalCambioRestauranteCarrito')?.classList.add('hidden');
+    if (itemPendienteCambioRestaurante) {
+        carrito = []; // Vaciar carrito de otro restaurante
+        const { plato, cantidad, rId, rNom } = itemPendienteCambioRestaurante;
+        itemPendienteCambioRestaurante = null;
+        insertarItemEnCarrito(plato, cantidad, rId, rNom);
+        mostrarToast(`Carrito reiniciado. Ahora pides en "${rNom}"`, 'info');
+    }
+}
+
+function insertarItemEnCarrito(plato, cantidad, rId, rNom) {
     const item = carrito.find(it => it.platillo_id === plato._id);
     if (item) {
         item.cantidad += cantidad;
@@ -649,6 +793,8 @@ function agregarItemAlCarrito(plato, cantidad) {
             precio: plato.precio,
             calorias: plato.calorias,
             imagen_url: plato.imagen_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=150&q=80',
+            restaurante_id: rId,
+            restaurante_nombre: rNom,
             cantidad
         });
     }
@@ -678,6 +824,12 @@ function renderizarCarrito() {
         return;
     }
 
+    // Cabecera indicando el restaurante único del pedido
+    const bannerRest = document.createElement('div');
+    bannerRest.style.cssText = 'display:flex; align-items:center; gap:8px; background:#e8f5e9; border:1px solid #c8e6c9; padding:8px 12px; border-radius:8px; margin-bottom:12px; font-size:0.82rem; color:#1b5e3a; font-weight:600;';
+    bannerRest.innerHTML = `<span>🏪 Pedido para:</span> <strong>${carrito[0].restaurante_nombre || 'Restaurante Kalo'}</strong>`;
+    contenedor.appendChild(bannerRest);
+
     let subtotal = 0;
     let totalKcal = 0;
 
@@ -691,7 +843,7 @@ function renderizarCarrito() {
             <img src="${item.imagen_url}" alt="${item.nombre}" class="dish-thumb-sm">
             <div class="cart-item-info">
                 <h5>${item.nombre}</h5>
-                <small class="text-subtle">$${item.precio.toLocaleString('es-CL')} · ${item.calorias} kcal</small>
+                <small class="text-subtle">${item.restaurante_nombre || 'Restaurante'} · $${item.precio.toLocaleString('es-CL')} · ${item.calorias} kcal</small>
             </div>
             <div class="qty-counter-row">
                 <button class="btn-qty" onclick="cambiarCantidadCarrito(${index}, -1)">-</button>
@@ -745,6 +897,7 @@ async function procesarPagoCarrito() {
     try {
         const subtotal = carrito.reduce((sum, it) => sum + (it.precio * it.cantidad), 0);
         const total = subtotal + 1490;
+        const restIdDetectado = carrito[0]?.restaurante_id;
 
         const res = await fetch('/api/mongo/pedidos', {
             method: 'POST',
@@ -752,6 +905,7 @@ async function procesarPagoCarrito() {
             body: JSON.stringify({
                 usuario_id: usuarioActual.id,
                 items: carrito,
+                restaurante_id: restIdDetectado,
                 total
             })
         });
@@ -1070,10 +1224,13 @@ function cambiarTabRestaurante(tabId) {
     }
 }
 
-// Tablero Kanban de 4 columnas
+// Tablero Kanban de 4 columnas (Exclusivo por restaurante)
 async function cargarTableroKanban() {
     try {
-        const res = await fetch('/api/mongo/pedidos');
+        const url = (usuarioActual && usuarioActual.rol === 'restaurante')
+            ? `/api/mongo/pedidos?restaurante_id=${usuarioActual.id}`
+            : '/api/mongo/pedidos';
+        const res = await fetch(url);
         const data = await res.json();
         if (data.exito && data.datos) {
             pedidosGlobales = data.datos;
@@ -1085,14 +1242,43 @@ async function cargarTableroKanban() {
     const colCamino = document.getElementById('kanbanColCamino');
     const colEntregado = document.getElementById('kanbanColEntregado');
 
+    if (!colPagado || !colPrep || !colCamino || !colEntregado) return;
+
     colPagado.innerHTML = '';
     colPrep.innerHTML = '';
     colCamino.innerHTML = '';
     colEntregado.innerHTML = '';
 
+    // Filtrar pedidos que pertenecen estrictamente a este restaurante
+    const pedidosRestaurante = (usuarioActual && usuarioActual.rol === 'restaurante')
+        ? pedidosGlobales.filter(p => {
+            const rId = p.restaurante_id?._id || p.restaurante_id;
+            return String(rId) === String(usuarioActual.id);
+        })
+        : pedidosGlobales;
+
+    // Actualizar banner de nuevo pedido (solo si hay pedidos entrantes para este restaurante)
+    const banner = document.getElementById('bannerAlertaPedido');
+    if (banner) {
+        const nuevoP = pedidosRestaurante.find(p => p.estado === 'Pagado' || p.estado === 'En Preparación');
+        if (nuevoP) {
+            banner.classList.remove('hidden');
+            const codNum = nuevoP.codigo_pedido.replace('KALO-2026-', '');
+            const bannerInfo = banner.querySelector('.banner-info-col');
+            if (bannerInfo) {
+                const nomPlato = nuevoP.detalles?.[0]?.nombre_platillo || 'Platillo Kalo';
+                bannerInfo.innerHTML = `<strong>Nuevo pedido #${codNum}</strong><span>${nuevoP.cliente?.nombre || 'Cliente'} · $${nuevoP.total.toLocaleString('es-CL')} · ${nomPlato}</span>`;
+            }
+            const btnVer = banner.querySelector('button');
+            if (btnVer) btnVer.onclick = () => enfocarPedidoKanban(codNum);
+        } else {
+            banner.classList.add('hidden');
+        }
+    }
+
     let c1 = 0, c2 = 0, c3 = 0, c4 = 0;
 
-    pedidosGlobales.forEach(p => {
+    pedidosRestaurante.forEach(p => {
         const card = document.createElement('div');
         card.className = 'kanban-item-card';
 
@@ -1138,6 +1324,11 @@ async function cargarTableroKanban() {
         }
     });
 
+    if (c1 === 0) colPagado.innerHTML = '<div class="text-subtle text-xs" style="text-align:center; padding:15px; color:#9ca3af;">Sin pedidos</div>';
+    if (c2 === 0) colPrep.innerHTML = '<div class="text-subtle text-xs" style="text-align:center; padding:15px; color:#9ca3af;">Sin pedidos</div>';
+    if (c3 === 0) colCamino.innerHTML = '<div class="text-subtle text-xs" style="text-align:center; padding:15px; color:#9ca3af;">Sin pedidos</div>';
+    if (c4 === 0) colEntregado.innerHTML = '<div class="text-subtle text-xs" style="text-align:center; padding:15px; color:#9ca3af;">Sin pedidos</div>';
+
     document.getElementById('countColPagado').textContent = c1;
     document.getElementById('countColPrep').textContent = c2;
     document.getElementById('countColCamino').textContent = c3;
@@ -1163,9 +1354,10 @@ async function avanzarEstadoKanban(codigo, nuevoEstado) {
 }
 
 // Modal Confirmar salida con asignación de PIN (Mockup 5.1)
-function abrirModalSalidaPedido(codigo) {
+async function abrirModalSalidaPedido(codigo) {
     pedidoParaDespacharCodigo = codigo;
     document.getElementById('lblConfSalidaTitulo').textContent = `¿El pedido #${codigo.replace('KALO-2026-', '')} está listo para salir?`;
+    await cargarRepartidoresEnSelect();
     document.getElementById('modalConfirmarSalidaPedido').classList.remove('hidden');
 }
 
@@ -1173,20 +1365,83 @@ function cerrarModalSalidaPedido() {
     document.getElementById('modalConfirmarSalidaPedido').classList.add('hidden');
 }
 
-async function confirmarDespachoPedido() {
-    if (!pedidoParaDespacharCodigo) return;
-    cerrarModalSalidaPedido();
-    await avanzarEstadoKanban(pedidoParaDespacharCodigo, 'En Camino');
-    mostrarToast('Pedido despachado. PIN de 4 dígitos disponible para el cliente.', 'success');
+// Cargar lista dinámica de repartidores registrados en Atlas
+async function cargarRepartidoresEnSelect() {
+    const sel = document.getElementById('selectRepartidorSalida');
+    if (!sel) return;
+    try {
+        const res = await fetch('/api/mongo/repartidores');
+        const data = await res.json();
+        if (data.exito && data.datos && data.datos.length > 0) {
+            sel.innerHTML = '';
+            data.datos.forEach(r => {
+                const opt = document.createElement('option');
+                opt.value = r._id;
+                opt.textContent = `${r.nombre} (${r.vehiculo || 'Repartidor'}) - Tel: ${r.telefono || 'Sin tel'}`;
+                sel.appendChild(opt);
+            });
+        }
+    } catch (e) {
+        console.warn('Error al cargar repartidores:', e);
+    }
 }
 
-// Tabla de Platillos en Restaurante
+async function confirmarDespachoPedido() {
+    if (!pedidoParaDespacharCodigo) return;
+    const repartidorId = document.getElementById('selectRepartidorSalida')?.value;
+    cerrarModalSalidaPedido();
+
+    try {
+        const res = await fetch('/api/mongo/pedidos/estado', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                codigo_pedido: pedidoParaDespacharCodigo, 
+                nuevo_estado: 'En Camino',
+                repartidor_id: repartidorId || undefined
+            })
+        });
+        const data = await res.json();
+        if (data.exito) {
+            mostrarToast('Pedido despachado con repartidor asignado. PIN disponible para el cliente.', 'success');
+            cargarTableroKanban();
+        } else {
+            mostrarToast(data.mensaje || 'Error al despachar', 'error');
+        }
+    } catch (e) {
+        mostrarToast('Error de conexión al despachar pedido', 'error');
+    }
+}
+
+// Tabla de Platillos en Restaurante (Exclusivo por local)
 function cargarTablaPlatillosRestaurante() {
     const tbody = document.getElementById('tbodyPlatillosRestaurante');
     if (!tbody) return;
     tbody.innerHTML = '';
 
-    platillosGlobales.forEach(plato => {
+    // Filtrar platillos que pertenecen a este restaurante
+    const misPlatillos = (usuarioActual && usuarioActual.rol === 'restaurante')
+        ? platillosGlobales.filter(plato => {
+            const rId = plato.restaurante_id?._id || plato.restaurante_id;
+            return String(rId) === String(usuarioActual.id);
+        })
+        : platillosGlobales;
+
+    if (misPlatillos.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" style="text-align:center; padding:35px 20px; color:#6b7280;">
+                    <div style="font-size:1.6rem; margin-bottom:8px;">🥗</div>
+                    <strong>Aún no tienes platillos registrados en tu carta.</strong><br>
+                    <small class="text-subtle">Crea tu primer platillo con ingredientes y método de cocción transparente.</small><br>
+                    <button class="btn btn-primary btn-sm mt-3" onclick="cambiarTabRestaurante('crearPlatillo')">+ Crear mi primer platillo</button>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    misPlatillos.forEach(plato => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td>
@@ -1305,7 +1560,8 @@ async function guardarNuevoPlatilloRestaurante(e) {
                 proteinas: parseInt(document.getElementById('prevProtTotal').textContent),
                 carbos: parseInt(document.getElementById('prevCarbTotal').textContent),
                 grasas: parseInt(document.getElementById('prevGrasaTotal').textContent),
-                ingredientes
+                ingredientes,
+                restaurante_id: usuarioActual?.id
             })
         });
 
@@ -1345,40 +1601,107 @@ function cargarEvaluacionesRestaurante() {
 // ==========================================================================
 // 6. REPARTIDOR MOBILE-FIRST (TECLADO PIN MOCKUP)
 // ==========================================================================
+let pedidosRepartidorList = [];
+let pedidoRepartidorSeleccionado = null;
+
 async function cargarPedidoRepartidor() {
     pinRepartidorActual = '';
     actualizarDisplayPinRepartidor();
+
+    const select = document.getElementById('selectPedidoRepartidor');
 
     try {
         const res = await fetch('/api/mongo/pedidos');
         const data = await res.json();
         if (data.exito && data.datos && data.datos.length > 0) {
-            const pedidoAsignado = data.datos.find(p => p.estado === 'En Camino') 
-                                || data.datos.find(p => p.estado === 'En Preparación') 
-                                || data.datos[0];
-
-            document.getElementById('repCodigoPedido').textContent = pedidoAsignado.codigo_pedido;
-            document.getElementById('repClienteNombre').textContent = `Cliente: ${pedidoAsignado.cliente?.nombre || 'Andrea Gómez'}`;
-            document.getElementById('repTotal').textContent = `Total: $${pedidoAsignado.total.toLocaleString('es-CL')}`;
-            
-            const badge = document.getElementById('repPedidoBadge');
-            badge.textContent = pedidoAsignado.estado;
-
-            const btnAceptar = document.getElementById('btnRepAceptar');
-            if (pedidoAsignado.estado === 'En Preparación') {
-                btnAceptar.classList.remove('hidden');
-            } else {
-                btnAceptar.classList.add('hidden');
+            // Filtrar pedidos activos (En Camino o En Preparación o Pagado)
+            pedidosRepartidorList = data.datos.filter(p => p.estado !== 'Entregado' && p.estado !== 'Cancelado');
+            if (pedidosRepartidorList.length === 0) {
+                // Si todos fueron entregados, mostrar los últimos para que la UI no quede vacía
+                pedidosRepartidorList = data.datos.slice(0, 3);
             }
+
+            if (select) {
+                select.innerHTML = '';
+                pedidosRepartidorList.forEach(p => {
+                    const opt = document.createElement('option');
+                    opt.value = p.codigo_pedido;
+                    const esMio = (usuarioActual && String(p.repartidor_id) === String(usuarioActual.id));
+                    opt.textContent = `${p.codigo_pedido} [${p.estado}] - ${p.cliente?.nombre || 'Cliente'}${esMio ? ' (Asignado a ti)' : ''}`;
+                    select.appendChild(opt);
+                });
+            }
+
+            // Seleccionar primero uno asignado a este repartidor, o en camino, o en preparación
+            const pedidoAsignado = (usuarioActual ? pedidosRepartidorList.find(p => String(p.repartidor_id) === String(usuarioActual.id) && p.estado === 'En Camino') : null)
+                                || pedidosRepartidorList.find(p => p.estado === 'En Camino') 
+                                || pedidosRepartidorList.find(p => p.estado === 'En Preparación') 
+                                || pedidosRepartidorList[0];
+
+            if (pedidoAsignado) {
+                if (select) select.value = pedidoAsignado.codigo_pedido;
+                mostrarDetallePedidoRepartidor(pedidoAsignado);
+            }
+        } else {
+            if (select) select.innerHTML = '<option value="">No hay pedidos disponibles</option>';
         }
-    } catch (e) {}
+    } catch (e) {
+        console.warn('Error al cargar pedidos para repartidor:', e);
+    }
+}
+
+function seleccionarPedidoRepartidorDesdeSelect(codigo) {
+    const pedido = pedidosRepartidorList.find(p => p.codigo_pedido === codigo);
+    if (pedido) {
+        mostrarDetallePedidoRepartidor(pedido);
+    }
+}
+
+function mostrarDetallePedidoRepartidor(pedido) {
+    pedidoRepartidorSeleccionado = pedido;
+    document.getElementById('repCodigoPedido').textContent = pedido.codigo_pedido;
+    document.getElementById('repClienteNombre').textContent = `Cliente: ${pedido.cliente?.nombre || 'Andrea Gómez'}`;
+    const dir = pedido.cliente?.direccion || 'Av. Brasil 2950, Valparaíso';
+    const repDir = document.getElementById('repDireccion');
+    if (repDir) repDir.textContent = `📍 ${dir}`;
+    document.getElementById('repTotal').textContent = `Total: $${pedido.total.toLocaleString('es-CL')}`;
+    
+    const badge = document.getElementById('repPedidoBadge');
+    badge.textContent = pedido.estado;
+
+    const btnAceptar = document.getElementById('btnRepAceptar');
+    if (pedido.estado === 'En Preparación' || pedido.estado === 'Pagado') {
+        btnAceptar.classList.remove('hidden');
+        btnAceptar.textContent = '🛵 Aceptar y Llevar Pedido';
+    } else {
+        btnAceptar.classList.add('hidden');
+    }
 }
 
 async function repartidorAceptarPedido() {
     const cod = document.getElementById('repCodigoPedido').textContent;
-    await avanzarEstadoKanban(cod, 'En Camino');
-    cargarPedidoRepartidor();
-    mostrarToast('Has aceptado el reparto. Ya estás en camino.', 'success');
+    try {
+        const res = await fetch('/api/mongo/pedidos/aceptar', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                codigo_pedido: cod,
+                repartidor_id: usuarioActual ? usuarioActual.id : undefined
+            })
+        });
+        const data = await res.json();
+        if (data.exito) {
+            mostrarToast(`¡Has aceptado el pedido ${cod}! En camino hacia el cliente.`, 'success');
+            await cargarPedidoRepartidor();
+        } else {
+            await avanzarEstadoKanban(cod, 'En Camino');
+            mostrarToast('Has aceptado el reparto. Ya estás en camino.', 'success');
+            await cargarPedidoRepartidor();
+        }
+    } catch (e) {
+        await avanzarEstadoKanban(cod, 'En Camino');
+        cargarPedidoRepartidor();
+    }
 }
 
 function teclearPinRepartidor(num) {

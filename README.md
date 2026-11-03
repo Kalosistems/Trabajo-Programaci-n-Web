@@ -1,25 +1,33 @@
-# Trabajo-Programacion-Web
-En este repositorio se encontrará toda la información del trabajo de programación web 2026, de Ariadna espejo y benjamín Figueroa
-# Kalo
-Kalo es una plataforma web innovadora que revoluciona el modelo tradicional de delivery al fusionar la comodidad de pedir comida con el control nutricional estricto (HealthTech + FoodTech. )
-Nace para resolver la desinformación, la desconfianza hacia las Dark Kitchens y la dificultad de mantener hábitos saludables al pedir a domicilio. El sistema actúa como un intermediario transparente, garantizando que el usuario sepa exactamente qué macronutrientes consume, validando las instalaciones de los restaurantes y asegurando la logística mediante códigos de seguridad.
-# Funcionalidades Principales
-Perfil Biométrico Inteligente: Cálculo automático de IMC y asignación de metas calóricas diarias según el peso y altura del usuario.
+# Kalo — Plataforma Web de Delivery Nutricional Transparente
 
-Búsqueda Nutricional Avanzada: Exploración de platillos mediante filtros obligatorios (ubicación) y opcionales (límites de calorías, alto en proteínas, índice de transparencia).
+> **Asignatura:** ICI324 Desarrollo Web y Bases de Datos — Universidad de Valparaíso  
+> **Integrantes:** Ariadna Espejo — Benjamín Figueroa  
+> **Entrega:** Entrega 2 (Migración NoSQL MongoDB Atlas + API REST + Frontend Oficial)  
+> **Documento Oficial de Entrega:** [INFORME_ENTREGA_2_KALO.md](INFORME_ENTREGA_2_KALO.md)
 
-Cálculo Nutricional Automatizado: Integración con API externa para calcular las Calorías, Proteínas, Grasas y Carbohidratos totales a partir de los ingredientes base del restaurante.
+---
 
-Índice de Transparencia (Ranking): Sistema que posiciona a los locales basándose en la claridad de su información, fotos de sus instalaciones y evaluaciones de "expectativa vs. realidad" de la comunidad.
+## 📌 Resumen del Proyecto
+**Kalo** es una plataforma web que revoluciona el delivery de comida fusionando **HealthTech + FoodTech**. Resuelve la desinformación calórica, la desconfianza hacia las *Dark Kitchens* y los fraudes en la entrega mediante tres pilares:
+1. **Transparencia Nutricional:** Cálculo automático de IMC, metas calóricas diarias y desglose transparente de ingredientes y métodos de cocción.
+2. **Auditoría de Dark Kitchens:** Sello e Índice de Transparencia (1-100%) respaldado por fotos verificadas de instalaciones y evaluaciones de la comunidad.
+3. **Logística Segura con PIN:** Código ambix de 4 dígitos generado al cliente que el repartidor debe validar en su teclado numérico para completar la entrega.
 
-Logística Segura (PIN): Generación de un código de 4 dígitos que el repartidor debe ingresar obligatoriamente para cerrar la transacción y evitar fraudes.
+---
 
-# 🛠️ Arquitectura y Tecnologías
+## 🛠️ Arquitectura Tecnológica
+* **Frontend:** Vanilla HTML5, CSS3 responsive (paleta oficial Kalo `#1b5e3a` y tipografía *Plus Jakarta Sans*), JavaScript SPA asíncrono.
+* **Backend:** Node.js + Express (API RESTful modular).
+* **Base de Datos NoSQL:** MongoDB Atlas en la nube (Mongoose ODM, clúster multi-región).
+* **Legado Relacional (Entrega 1):** SQLite (`nutridelivery.db`) preservado para análisis comparativo incremental.
 
-Frontend: HTML, CSS
+---
 
-Backend: JS, NODE.JS
+## 🚀 Puesta en Marcha Local
 
-Bases de Datos: SQLITE, MongoDB Atlas
+```bash
+# 1. Instalar dependencias
+npm install
 
-Integraciones: API REST para cálculo de macronutrientes e implementación de JWT para seguridad de usuarios.
+# 2. Iniciar el servidor
+node server.js

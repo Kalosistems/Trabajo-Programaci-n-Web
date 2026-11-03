@@ -142,6 +142,7 @@ async function poblar() {
             descripcion: 'Salmón a la plancha sobre base de quinoa, palta, pepino y aderezo de sésamo.',
             precio: 8500,
             calorias: 520,
+            imagen_url: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80',
             macronutrientes: { proteinas_g: 38, carbohidratos_g: 45, grasas_g: 18 },
             indice_transparencia: 98,
             restaurante_id: restaurantes[0]._id
@@ -151,6 +152,7 @@ async function poblar() {
             descripcion: 'Pechuga de pollo marinada en finas hierbas con medallones de batata y espárragos.',
             precio: 7900,
             calorias: 480,
+            imagen_url: 'https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?auto=format&fit=crop&w=600&q=80',
             macronutrientes: { proteinas_g: 46, carbohidratos_g: 40, grasas_g: 9 },
             indice_transparencia: 96,
             restaurante_id: restaurantes[1]._id
@@ -160,6 +162,7 @@ async function poblar() {
             descripcion: 'Wrap integral con tofu salteado, hummus de garbanzo, espinacas y chía.',
             precio: 6500,
             calorias: 410,
+            imagen_url: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=600&q=80',
             macronutrientes: { proteinas_g: 24, carbohidratos_g: 50, grasas_g: 12 },
             indice_transparencia: 94,
             restaurante_id: restaurantes[0]._id

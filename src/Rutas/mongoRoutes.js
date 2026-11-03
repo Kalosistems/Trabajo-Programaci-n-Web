@@ -19,6 +19,10 @@ router.put('/pedidos/aceptar', mongoController.aceptarPedido);
 router.post('/pedidos/validar-pin', mongoController.validarPinEntrega);
 router.post('/pedidos/evaluar', mongoController.evaluarPedido);
 
+// Repartidores y Restaurantes
+router.get('/repartidores', mongoController.obtenerRepartidores);
+router.put('/restaurantes/mi-local', mongoController.actualizarMiLocal);
+
 // Planes nutricionales y perfil biométrico
 router.get('/planes', mongoController.obtenerPlanes);
 router.put('/usuarios/biometrico', mongoController.actualizarPerfilBiometrico);

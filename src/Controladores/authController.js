@@ -63,10 +63,11 @@ exports.login = async (req, res) => {
                     id: restaurante._id,
                     nombre: restaurante.nombre,
                     correo: restaurante.correo,
-                    telefono: restaurante.telefono,
-                    rol: 'restaurante',
-                    especialidad: restaurante.especialidad,
-                    calificacion_promedio: restaurante.calificacion_promedio || 4.9
+                    telefono: restaurante.telefono || '+569 9000 0000',
+                    direccion: restaurante.direccion || 'Av. Libertad 450, Viña del Mar',
+                    especialidad: restaurante.especialidad || 'Comida Nutritiva y Saludable',
+                    calificacion_promedio: restaurante.calificacion_promedio || 4.9,
+                    rol: 'restaurante'
                 }
             });
         }
@@ -81,10 +82,11 @@ exports.login = async (req, res) => {
                     id: repartidor._id,
                     nombre: repartidor.nombre,
                     correo: repartidor.correo,
-                    telefono: repartidor.telefono,
-                    rol: 'repartidor',
-                    vehiculo: repartidor.vehiculo,
-                    estado: repartidor.estado
+                    telefono: repartidor.telefono || '+569 9000 0000',
+                    vehiculo: repartidor.vehiculo || 'Motocicleta',
+                    estado: repartidor.estado || 'Disponible',
+                    calificacion: repartidor.calificacion || 5.0,
+                    rol: 'repartidor'
                 }
             });
         }
@@ -109,7 +111,11 @@ exports.registro = async (req, res) => {
     if (!verificarConexionAtlas(res)) return;
 
     try {
-        const { rol, nombre, correo, password, peso, altura, edad, genero } = req.body;
+        const { 
+            rol, nombre, correo, password, 
+            peso, altura, edad, genero,
+            especialidad, direccion, telefono, vehiculo 
+        } = req.body;
 
         if (!nombre || !correo || !password) {
             return res.status(400).json({
@@ -137,9 +143,13 @@ exports.registro = async (req, res) => {
                 nombre: nombre.trim(),
                 correo: correoNormalizado,
                 password_hash: password,
-                especialidad: 'Comida Nutritiva y Saludable',
-                direccion: 'Av. Libertad 450, Viña del Mar'
+                especialidad: especialidad ? especialidad.trim() : 'Comida Nutritiva y Saludable',
+                direccion: direccion ? direccion.trim() : 'Av. Libertad 450, Viña del Mar',
+                telefono: telefono ? telefono.trim() : '+569 9000 0000',
+                calificacion_promedio: 5.0
             });
+
+            console.log(`✅ Nuevo restaurante creado en Atlas: ${nuevoRest.nombre} (${nuevoRest.correo})`);
 
             return res.status(201).json({
                 exito: true,
@@ -148,6 +158,10 @@ exports.registro = async (req, res) => {
                     id: nuevoRest._id,
                     nombre: nuevoRest.nombre,
                     correo: nuevoRest.correo,
+                    telefono: nuevoRest.telefono,
+                    direccion: nuevoRest.direccion,
+                    especialidad: nuevoRest.especialidad,
+                    calificacion_promedio: nuevoRest.calificacion_promedio,
                     rol: 'restaurante'
                 }
             });
@@ -158,9 +172,13 @@ exports.registro = async (req, res) => {
                 nombre: nombre.trim(),
                 correo: correoNormalizado,
                 password_hash: password,
-                telefono: '+56900000000',
-                vehiculo: 'Motocicleta'
+                telefono: telefono ? telefono.trim() : '+569 9000 0000',
+                vehiculo: vehiculo || 'Motocicleta',
+                estado: 'Disponible',
+                calificacion: 5.0
             });
+
+            console.log(`✅ Nuevo repartidor creado en Atlas: ${nuevoRepart.nombre} (${nuevoRepart.correo})`);
 
             return res.status(201).json({
                 exito: true,
@@ -169,6 +187,10 @@ exports.registro = async (req, res) => {
                     id: nuevoRepart._id,
                     nombre: nuevoRepart.nombre,
                     correo: nuevoRepart.correo,
+                    telefono: nuevoRepart.telefono,
+                    vehiculo: nuevoRepart.vehiculo,
+                    estado: nuevoRepart.estado,
+                    calificacion: nuevoRepart.calificacion,
                     rol: 'repartidor'
                 }
             });

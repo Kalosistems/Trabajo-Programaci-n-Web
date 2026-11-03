@@ -57,7 +57,9 @@ exports.obtenerPlatillos = async (req, res) => {
             filtro['macronutrientes.proteinas_g'] = { $gte: parseFloat(minProteina) };
         }
 
-        const platillos = await Platillo.find(filtro).sort({ indice_transparencia: -1, precio: 1 });
+        const platillos = await Platillo.find(filtro)
+            .populate('restaurante_id', 'nombre especialidad direccion')
+            .sort({ indice_transparencia: -1, precio: 1 });
         res.status(200).json({
             exito: true,
             total: platillos.length,
@@ -255,7 +257,20 @@ exports.obtenerEstadisticasBiometricas = async (req, res) => {
 exports.obtenerPedidos = async (req, res) => {
     if (!verificarConexion(res)) return;
     try {
-        const pedidos = await Pedido.find().sort({ fecha_pedido: -1 });
+        const { restaurante_id, repartidor_id } = req.query;
+        let filtro = {};
+        if (restaurante_id && mongoose.Types.ObjectId.isValid(restaurante_id)) {
+            filtro.restaurante_id = restaurante_id;
+        }
+        if (repartidor_id && mongoose.Types.ObjectId.isValid(repartidor_id)) {
+            filtro.repartidor_id = repartidor_id;
+        }
+
+        const pedidos = await Pedido.find(filtro)
+            .populate('restaurante_id', 'nombre especialidad direccion')
+            .populate('repartidor_id', 'nombre vehiculo telefono')
+            .sort({ fecha_pedido: -1 });
+
         res.status(200).json({
             exito: true,
             total: pedidos.length,
@@ -273,7 +288,7 @@ exports.obtenerPedidos = async (req, res) => {
 exports.crearPedido = async (req, res) => {
     if (!verificarConexion(res)) return;
     try {
-        const { usuario_id, items, total } = req.body;
+        const { usuario_id, items, total, restaurante_id } = req.body;
 
         let usuario = null;
         if (usuario_id && mongoose.Types.ObjectId.isValid(usuario_id)) {
@@ -289,9 +304,10 @@ exports.crearPedido = async (req, res) => {
 
         let detallesFormateados = [];
         let totalCalculado = 0;
+        let restIdDetectado = restaurante_id;
 
         if (Array.isArray(items) && items.length > 0) {
-            detallesFormateados = items.map(it => {
+            for (const it of items) {
                 const sub = (parseFloat(it.precio) || 0) * (parseInt(it.cantidad) || 1);
                 totalCalculado += sub;
                 
@@ -300,19 +316,34 @@ exports.crearPedido = async (req, res) => {
                     idPlato = new mongoose.Types.ObjectId();
                 }
 
-                return {
+                // Detectar a qué restaurante pertenece el platillo
+                if (!restIdDetectado && it.restaurante_id) {
+                    restIdDetectado = it.restaurante_id._id || it.restaurante_id;
+                } else if (!restIdDetectado && mongoose.Types.ObjectId.isValid(idPlato)) {
+                    const platoDoc = await Platillo.findById(idPlato);
+                    if (platoDoc && platoDoc.restaurante_id) {
+                        restIdDetectado = platoDoc.restaurante_id;
+                    }
+                }
+
+                detallesFormateados.push({
                     platillo_id: idPlato,
                     nombre_platillo: it.nombre || 'Platillo Kalo',
                     cantidad: parseInt(it.cantidad) || 1,
                     precio_unitario: parseFloat(it.precio) || 0,
                     subtotal: sub
-                };
-            });
+                });
+            }
+        }
+
+        // Si aún no se detectó el restaurante, vincular con el primero como fallback
+        if (!restIdDetectado) {
+            const primerRestaurante = await Restaurante.findOne();
+            restIdDetectado = primerRestaurante ? primerRestaurante._id : null;
         }
 
         const codigoRandom = `KALO-2026-${Math.floor(1000 + Math.random() * 9000)}`;
         const pinRandom = String(Math.floor(1000 + Math.random() * 9000));
-        const primerRestaurante = await Restaurante.findOne();
 
         const nuevoPedido = await Pedido.create({
             codigo_pedido: codigoRandom,
@@ -326,7 +357,7 @@ exports.crearPedido = async (req, res) => {
                 correo: usuario.correo,
                 telefono: usuario.telefono || '+56912345678'
             },
-            restaurante_id: primerRestaurante ? primerRestaurante._id : null,
+            restaurante_id: restIdDetectado,
             detalles: detallesFormateados,
             total: total || (totalCalculado + 1490) || 10480
         });
@@ -351,7 +382,7 @@ exports.crearPedido = async (req, res) => {
 // 8. Actualizar Estado de Pedido (Kanban Restaurante / Repartidor)
 exports.actualizarEstadoPedido = async (req, res) => {
     if (!verificarConexion(res)) return;
-    const { codigo_pedido, nuevo_estado } = req.body;
+    const { codigo_pedido, nuevo_estado, repartidor_id } = req.body;
 
     if (!codigo_pedido || !nuevo_estado) {
         return res.status(400).json({ exito: false, mensaje: 'Faltan parámetros requeridos.' });
@@ -364,6 +395,9 @@ exports.actualizarEstadoPedido = async (req, res) => {
         }
 
         pedido.estado = nuevo_estado;
+        if (repartidor_id) {
+            pedido.repartidor_id = repartidor_id;
+        }
         await pedido.save();
 
         res.status(200).json({
@@ -543,5 +577,53 @@ exports.eliminarUsuario = async (req, res) => {
         });
     } catch (error) {
         res.status(500).json({ exito: false, mensaje: 'Error al eliminar datos', detalle: error.message });
+    }
+};
+
+// 15. Listar Repartidores (Para selección dinámica en despacho)
+exports.obtenerRepartidores = async (req, res) => {
+    if (!verificarConexion(res)) return;
+    try {
+        const repartidores = await Repartidor.find({ activo: true });
+        res.status(200).json({
+            exito: true,
+            total: repartidores.length,
+            operacion: 'find({ activo: true })',
+            consultaMQL: 'Repartidor.find({ activo: true })',
+            datos: repartidores
+        });
+    } catch (error) {
+        res.status(500).json({ exito: false, mensaje: 'Error al obtener repartidores', detalle: error.message });
+    }
+};
+
+// 16. Actualizar Datos de "Mi Local" (Restaurante)
+exports.actualizarMiLocal = async (req, res) => {
+    if (!verificarConexion(res)) return;
+    try {
+        const { restaurante_id, nombre, direccion, telefono, especialidad } = req.body;
+        if (!restaurante_id) {
+            return res.status(400).json({ exito: false, mensaje: 'El ID de restaurante es obligatorio' });
+        }
+
+        const rest = await Restaurante.findById(restaurante_id);
+        if (!rest) {
+            return res.status(404).json({ exito: false, mensaje: 'Restaurante no encontrado' });
+        }
+
+        if (nombre) rest.nombre = nombre.trim();
+        if (direccion) rest.direccion = direccion.trim();
+        if (telefono) rest.telefono = telefono.trim();
+        if (especialidad) rest.especialidad = especialidad.trim();
+
+        await rest.save();
+
+        res.status(200).json({
+            exito: true,
+            mensaje: `¡Datos de "${rest.nombre}" actualizados exitosamente!`,
+            restaurante: rest
+        });
+    } catch (error) {
+        res.status(500).json({ exito: false, mensaje: 'Error al actualizar local', detalle: error.message });
     }
 };

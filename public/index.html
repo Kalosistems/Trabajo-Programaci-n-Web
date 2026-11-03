@@ -977,7 +977,7 @@
                         <h3>Mi local</h3>
                         <p class="text-subtle">La transparencia construye confianza. Cumple con las fotos de la cocina para mejorar tu índice.</p>
                     </div>
-                    <button class="btn btn-primary" onclick="mostrarToast('Datos del local actualizados', 'success')">Guardar cambios</button>
+                    <button class="btn btn-primary" onclick="guardarDatosMiLocal()">Guardar cambios</button>
                 </div>
 
                 <div class="grid-local-info">
@@ -986,20 +986,20 @@
                         <h4>Datos del local</h4>
                         <div class="form-group">
                             <label>Nombre del restaurante</label>
-                            <input type="text" value="Verde Vivo - Cocina Santiago">
+                            <input type="text" id="inputRestNombreLocal" placeholder="Nombre del restaurante">
                         </div>
                         <div class="form-group">
                             <label>Dirección</label>
-                            <input type="text" value="Av. Providencia 1240, Providencia, Santiago">
+                            <input type="text" id="inputRestDireccion" placeholder="Dirección del local">
                         </div>
                         <div class="grid-inputs-row">
                             <div class="form-group" style="flex:1;">
                                 <label>Teléfono</label>
-                                <input type="text" value="+569 8765 4321">
+                                <input type="text" id="inputRestTelefono" placeholder="+569...">
                             </div>
                             <div class="form-group" style="flex:1;">
                                 <label>Especialidad</label>
-                                <input type="text" value="Comida saludable y bowls funcionales">
+                                <input type="text" id="inputRestEspecialidad" placeholder="Especialidad culinaria">
                             </div>
                         </div>
                     </div>
@@ -1100,13 +1100,22 @@
 
                 <div class="driver-app-header">
                     <div>
-                        <small>App Repartidor Mobile-First</small>
-                        <h3>🛵 Kalo Delivery</h3>
+                        <small id="repSubtituloHeader">App Repartidor Mobile-First</small>
+                        <h3 id="repNombreHeader">🛵 Kalo Delivery</h3>
+                        <div id="repInfoVehiculo" style="font-size:0.75rem; color:#d1fae5; margin-top:2px;">Vehículo: Motocicleta</div>
                     </div>
                     <span class="status-dot-online">Online</span>
                 </div>
 
                 <div class="driver-content-scroll">
+                    <!-- Selector de Pedido para repartidor -->
+                    <div class="form-group" style="margin-bottom:12px;">
+                        <label style="font-size:0.78rem; font-weight:700; color:#1b5e3a;">Seleccionar Pedido en Ruta:</label>
+                        <select id="selectPedidoRepartidor" onchange="seleccionarPedidoRepartidorDesdeSelect(this.value)" style="width:100%; padding:8px 10px; border-radius:8px; border:1px solid #c8e6c9; background:#f0fdf4; font-size:0.85rem; font-weight:600;">
+                            <option value="">Cargando pedidos...</option>
+                        </select>
+                    </div>
+
                     <!-- Tarjeta de Pedido Asignado -->
                     <div class="order-pickup-card">
                         <div class="flex-between">
@@ -1118,7 +1127,7 @@
                         <p id="repTotal" class="price-highlight mt-1">Total: $10.480</p>
 
                         <button id="btnRepAceptar" class="btn btn-secondary btn-block mt-3" onclick="repartidorAceptarPedido()">
-                            🛵 Aceptar Reparto
+                            🛵 Aceptar y Llevar Pedido
                         </button>
                         <div class="order-divider"></div>
                         <span class="order-alert-box">⚠️ Solicita el PIN de 4 dígitos al cliente para validar la entrega</span>
@@ -1519,6 +1528,21 @@
                         <pre id="mqlJsonDisplay">{ "mensaje": "Esperando ejecución..." }</pre>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 9: REINICIAR CARRITO POR CAMBIO DE RESTAURANTE -->
+    <div id="modalCambioRestauranteCarrito" class="modal-overlay hidden">
+        <div class="modal-dialog-card">
+            <span class="dialog-icon">🏪</span>
+            <h3>¿Cambiar de restaurante?</h3>
+            <p class="text-subtle text-xs mt-2" id="lblTextoCambioRestaurante">
+                Tu carrito actual tiene platillos de otro local. Solo puedes realizar pedidos a un restaurante a la vez.
+            </p>
+            <div class="dialog-actions-row mt-4">
+                <button class="btn btn-outline" onclick="cancelarCambioRestauranteCarrito()">Conservar actual</button>
+                <button class="btn btn-primary" onclick="confirmarCambioRestauranteCarrito()">Vaciar y agregar</button>
             </div>
         </div>
     </div>
