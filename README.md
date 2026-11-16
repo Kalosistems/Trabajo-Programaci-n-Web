@@ -13,10 +13,13 @@
 ---
 
 ## 🛠️ Arquitectura Tecnológica
-* **Frontend:** Vanilla HTML5, CSS3 responsive (paleta oficial Kalo `#1b5e3a` y tipografía *Plus Jakarta Sans*), JavaScript SPA asíncrono.
-* **Backend:** Node.js + Express (API RESTful modular).
-* **Base de Datos NoSQL:** MongoDB Atlas en la nube (Mongoose ODM, clúster multi-región).
-* **Legado Relacional (Entrega 1):** SQLite (`nutridelivery.db`) preservado para análisis comparativo incremental.
+* **Frontend:** HTML5, CSS3 y JavaScript sin frameworks (SPA en `public/`).
+* **Backend:** Node.js + Express 5 (API REST modular: rutas → controladores → modelos).
+* **Base de datos:** MongoDB Atlas con Mongoose (colecciones `usuarios`, `planes_nutricionales`, `restaurantes`, `platillos`, `repartidores` y `pedidos`).
+* **Seguridad:** contraseñas con hash bcrypt, sesión con token JWT y permisos por rol, límites de solicitudes (express-rate-limit).
+* La base SQLite de la Etapa 1 se retiró del proyecto; su diseño queda documentado en el informe.
+
+📄 Documentación de la API: [docs/API.md](docs/API.md)
 
 ---
 
@@ -26,5 +29,21 @@
 # 1. Instalar dependencias
 npm install
 
-# 2. Iniciar el servidor
-node server.js
+# 2. Crear el archivo .env a partir del ejemplo y completar MONGO_URI y JWT_SECRET
+cp .env.example .env
+
+# 3. Cargar los datos de prueba (BORRA y vuelve a crear las colecciones)
+npm run seed
+
+# 4. Iniciar el servidor → http://localhost:3000
+npm start
+
+# 5. (Opcional, con el servidor corriendo) probar la API: 46 pruebas
+npm run test:api
+```
+
+Cuentas de prueba (contraseña `Kalo1234`): `andrea@mail.com` (cliente), `contacto@greenbowl.cl` (restaurante) y `carlos.reparto@kalo.cl` (repartidor).
+
+Si en Atlas quedaron cuentas creadas antes de esta versión con la contraseña en texto plano, `npm run migrar-claves` las convierte a hash bcrypt.
+
+> ⚠️ Nunca subas el archivo `.env`: contiene la clave de MongoDB Atlas.
