@@ -1,6 +1,8 @@
 [
   {
-    "_id": "6620f2b8e13b8a1c90000001",
+    "_id": {
+      "$oid": "6620f2b8e13b8a1c90000001"
+    },
     "nombre_plan": "Definición Muscular",
     "calorias_diarias": 1800,
     "objetivo": "Pérdida de grasa y tonificación",
@@ -13,7 +15,9 @@
     ]
   },
   {
-    "_id": "6620f2b8e13b8a1c90000002",
+    "_id": {
+      "$oid": "6620f2b8e13b8a1c90000002"
+    },
     "nombre_plan": "Volumen Limpio",
     "calorias_diarias": 2600,
     "objetivo": "Ganancia de masa muscular magra",
@@ -26,7 +30,9 @@
     ]
   },
   {
-    "_id": "6620f2b8e13b8a1c90000003",
+    "_id": {
+      "$oid": "6620f2b8e13b8a1c90000003"
+    },
     "nombre_plan": "Salud y Vitalidad",
     "calorias_diarias": 2000,
     "objetivo": "Mantenimiento y nutrición balanceada",

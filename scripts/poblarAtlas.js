@@ -1,11 +1,11 @@
-const path = require('path');
-const fs = require('fs');
-const rootEnv = path.join(__dirname, '..', '.env');
-const altEnv = path.join(__dirname, '..', 'env');
-if (fs.existsSync(rootEnv)) require('dotenv').config({ path: rootEnv });
-else if (fs.existsSync(altEnv)) require('dotenv').config({ path: altEnv });
-else require('dotenv').config();
-const { conectarMongo } = require('../src/config/mongo');
+/**
+ * Carga los datos de ejemplo en MongoDB (npm run seed).
+ * ¡OJO! Borra y vuelve a crear las colecciones de Kalo.
+ * Todas las cuentas de prueba usan la contraseña Kalo1234, guardada como hash bcrypt.
+ */
+require('dotenv').config();
+const bcrypt = require('bcryptjs');
+const { conectarMongo, mongoose } = require('../src/config/mongo');
 const Usuario = require('../src/Modelos/mongo/Usuario');
 const PlanNutricional = require('../src/Modelos/mongo/PlanNutricional');
 const Restaurante = require('../src/Modelos/mongo/Restaurante');
@@ -13,8 +13,14 @@ const Repartidor = require('../src/Modelos/mongo/Repartidor');
 const Platillo = require('../src/Modelos/mongo/Platillo');
 const Pedido = require('../src/Modelos/mongo/Pedido');
 
+const CLAVE_PRUEBA = 'Kalo1234';
+
 async function poblar() {
     await conectarMongo();
+    const HASH = await bcrypt.hash(CLAVE_PRUEBA, 10); // '$2a$10$...'
+
+    // La colección antigua "Usuario" (Etapa 2 inicial) se reemplaza por "usuarios"
+    try { await mongoose.connection.db.dropCollection('Usuario'); console.log('🧹 Colección antigua "Usuario" eliminada'); } catch (e) {}
     console.log('--- Iniciando carga de datos en MongoDB Atlas ---');
 
     // 1. Usuarios con perfil biométrico
@@ -23,7 +29,7 @@ async function poblar() {
         {
             nombre: 'Andrea Gómez',
             correo: 'andrea@mail.com',
-            password_hash: '$2b$10$hashedAndrea1234567890123456789012345678901234',
+            password_hash: HASH,
             telefono: '+56912345678',
             perfil_biometrico: {
                 peso_kg: 68.5,
@@ -38,7 +44,7 @@ async function poblar() {
         {
             nombre: 'Benjamín Figueroa',
             correo: 'benjamin.figueroam@estudiantes.uv.cl',
-            password_hash: '$2b$10$hashedBenjamin12345678901234567890123456789012',
+            password_hash: HASH,
             telefono: '+56987654321',
             perfil_biometrico: {
                 peso_kg: 75.0,
@@ -53,7 +59,7 @@ async function poblar() {
         {
             nombre: 'Ariadna Espejo',
             correo: 'ariadna.espejo@mail.com',
-            password_hash: '$2b$10$hashedAriadna123456789012345678901234567890123',
+            password_hash: HASH,
             telefono: '+56955554444',
             perfil_biometrico: {
                 peso_kg: 62.0,
@@ -101,7 +107,7 @@ async function poblar() {
         {
             nombre: 'Green Bowl Nutrición',
             correo: 'contacto@greenbowl.cl',
-            password_hash: '$2b$10$hashRestauranteGreenBowl1234567890123456789012',
+            password_hash: HASH,
             especialidad: 'Bowls y Ensaladas Funcionales',
             direccion: 'Av. Libertad 450, Viña del Mar',
             telefono: '+56933445566',
@@ -110,7 +116,7 @@ async function poblar() {
         {
             nombre: 'Protein Kitchen Kalo',
             correo: 'pedidos@proteinkitchen.cl',
-            password_hash: '$2b$10$hashRestauranteProtein12345678901234567890123',
+            password_hash: HASH,
             especialidad: 'Comidas altas en proteína y control de macros',
             direccion: 'Calle Prat 120, Valparaíso',
             telefono: '+56977889900',
@@ -125,7 +131,7 @@ async function poblar() {
         {
             nombre: 'Carlos Repartidor Express',
             correo: 'carlos.reparto@kalo.cl',
-            password_hash: '$2b$10$hashRepartidorCarlos12345678901234567890123456',
+            password_hash: HASH,
             telefono: '+56966112233',
             vehiculo: 'Motocicleta',
             estado: 'Disponible',
@@ -202,12 +208,38 @@ async function poblar() {
                     subtotal: platillos[0].precio
                 }
             ],
-            total: 8500
+            pin_generado_en: new Date(),
+            total: 8500 + 1490
+        },
+        {
+            // Pedido en preparación: todavía no tiene PIN; se genera cuando el local lo despacha
+            codigo_pedido: 'KALO-2026-0002',
+            fecha_pedido: new Date(),
+            estado: 'En Preparación',
+            cliente: {
+                usuario_id: usuarios[0]._id,
+                nombre: usuarios[0].nombre,
+                correo: usuarios[0].correo,
+                telefono: usuarios[0].telefono
+            },
+            restaurante_id: restaurantes[0]._id,
+            detalles: [
+                {
+                    platillo_id: platillos[2]._id,
+                    nombre_platillo: platillos[2].nombre,
+                    cantidad: 2,
+                    precio_unitario: platillos[2].precio,
+                    subtotal: platillos[2].precio * 2
+                }
+            ],
+            total: 6500 * 2 + 1490
         }
     ]);
-    console.log('✅ 1 Pedido inicial creado');
-    console.log('🎉 ¡Base de datos en MongoDB Atlas 100% lista!');
-    process.exit(0);
+    await Pedido.syncIndexes(); // crea los índices definidos en el modelo
+    console.log('✅ 2 Pedidos creados');
+    console.log(`🔑 Cuentas de prueba (contraseña ${CLAVE_PRUEBA}): andrea@mail.com · contacto@greenbowl.cl · carlos.reparto@kalo.cl`);
+    console.log('🎉 ¡Base de datos lista!');
+    await mongoose.disconnect();
 }
 
 poblar().catch(err => {
