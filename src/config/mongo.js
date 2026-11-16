@@ -1,33 +1,21 @@
+// Algunas redes (universidad, celular) no resuelven bien los registros SRV de Atlas:
+// se usan DNS públicos para la cadena mongodb+srv://
 const dns = require('dns');
-try {
-    dns.setServers(['8.8.8.8', '1.1.1.1']);
-} catch (e) {}
+try { dns.setServers(['8.8.8.8', '1.1.1.1']); } catch (e) {}
 
 const mongoose = require('mongoose');
 
 const conectarMongo = async () => {
-    let mongoUri = process.env.MONGO_URI || process.env.MONGODB_URI;
+    const mongoUri = (process.env.MONGO_URI || process.env.MONGODB_URI || '').trim();
     if (!mongoUri) {
-        console.error('❌ ERROR CRÍTICO: La variable MONGO_URI no está configurada en las Variables de Entorno.');
+        console.error('❌ Falta MONGO_URI en el archivo .env (ver .env.example).');
         return;
     }
-
-    mongoUri = mongoUri.trim();
-    // Asegurar que especifique la base de datos test
-    if (mongoUri.endsWith('.mongodb.net/')) {
-        mongoUri += 'test?retryWrites=true&w=majority';
-    } else if (mongoUri.endsWith('.mongodb.net')) {
-        mongoUri += '/test?retryWrites=true&w=majority';
-    }
-
     try {
-        await mongoose.connect(mongoUri, {
-            serverSelectionTimeoutMS: 8000
-        });
-        const dbName = mongoose.connection.name || 'test';
-        console.log(`✅ ¡Conexión exitosa a MongoDB Atlas en la nube! Base de datos activa: [${dbName}]`);
+        await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 8000 });
+        console.log(`✅ Conectado a MongoDB. Base de datos: [${mongoose.connection.name}]`);
     } catch (error) {
-        console.error('❌ Error conectando a MongoDB Atlas:', error.message);
+        console.error('❌ Error conectando a MongoDB:', error.message);
     }
 };
 
