@@ -239,7 +239,7 @@ El archivo `scripts/probarApi.js` (`npm run test:api`) ejecuta 46 pruebas de est
 
 Cada respuesta trae las cabeceras `RateLimit-Policy` y `RateLimit` (límite, solicitudes restantes y segundos para el reinicio).
 
-**Cuotas del plan de MongoDB Atlas (M0, gratuito):** 512 MB de almacenamiento, hasta 500 conexiones y hasta 100 operaciones por segundo. Con los datos actuales (pocos KB) estamos muy por debajo. Si el uso crece, el paso siguiente es un clúster Flex o dedicado, sin cambiar el código.
+**Cuotas del plan de MongoDB Atlas (M0, gratuito):** 0,5 GB de almacenamiento, 500 conexiones, 100 operaciones de lectura y escritura por segundo y 10 GB de entrada y 10 GB de salida cada 7 días. Si se superan, Atlas no rechaza las operaciones: las hace más lentas. Con los datos actuales (pocos KB) estamos muy por debajo. Si el uso crece, el paso siguiente es un clúster Flex o dedicado, sin cambiar el código.
 
 ## 7. Consideraciones de seguridad
 
