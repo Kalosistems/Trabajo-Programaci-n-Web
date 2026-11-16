@@ -1,59 +1,39 @@
-const fs = require('fs');
-const path = require('path');
-
-// Cargar variables de entorno desde .env o env
-if (fs.existsSync(path.join(__dirname, '.env'))) {
-    require('dotenv').config({ path: path.join(__dirname, '.env') });
-} else if (fs.existsSync(path.join(__dirname, 'env'))) {
-    require('dotenv').config({ path: path.join(__dirname, 'env') });
-} else {
-    require('dotenv').config();
-}
+/**
+ * Kalo · NutriDelivery — servidor de la API REST (Etapa 2: MongoDB Atlas).
+ * La Etapa 1 (SQLite) se retiró del código; su historia queda en el informe.
+ */
+require('dotenv').config(); // lee .env (este archivo NO se sube a GitHub)
 
 const express = require('express');
 const cors = require('cors');
 const { conectarMongo } = require('./src/config/mongo');
-const Usuario = require('./src/Modelos/mongo/Usuario');
-const PlanNutricionalMongo = require('./src/Modelos/mongo/PlanNutricional');
+const { limiteGeneral } = require('./src/middleware/limites');
+const { manejarErrores, rutaNoEncontrada } = require('./src/middleware/errores');
 const authRoutes = require('./src/Rutas/authRoutes');
-const consultaRoutes = require('./src/Rutas/consultaRoutes');
+const mongoRoutes = require('./src/Rutas/mongoRoutes');
+
+if (!process.env.JWT_SECRET) {
+    console.warn('⚠️  Falta JWT_SECRET en el archivo .env. Se usará una clave temporal solo para desarrollo.');
+}
 
 const app = express();
-
-// Iniciar conexión con MongoDB Atlas
 conectarMongo();
 
 // Middlewares
-app.use(express.json());
-app.use(cors());
+app.disable('x-powered-by');
+app.use(cors({ origin: process.env.CORS_ORIGEN || true }));
+app.use(express.json({ limit: '100kb' }));   // límite del cuerpo de cada solicitud
 app.use(express.static('public'));
 
-// Ruta de prueba para verificar conexión a MongoDB Atlas
-app.get('/api/mongo/test', async (req, res) => {
-    try {
-        const planes = await PlanNutricionalMongo.find();
-        const usuarios = await Usuario.find();
-        res.json({
-            exito: true,
-            mensaje: '¡Conexión a MongoDB Atlas exitosa!',
-            totalPlanes: planes.length,
-            totalUsuarios: usuarios.length,
-            planes,
-            usuarios
-        });
-    } catch (error) {
-        res.status(500).json({ exito: false, error: error.message });
-    }
-});
+// API REST (todas las rutas bajo /api)
+app.use('/api', limiteGeneral);              // 300 solicitudes por IP cada 15 minutos
+app.use('/api', authRoutes);                 // /api/login y /api/registro
+app.use('/api/mongo', mongoRoutes);          // recursos de MongoDB Atlas
 
-const mongoRoutes = require('./src/Rutas/mongoRoutes');
-
-// Rutas modularizadas bajo el prefijo /api
-app.use('/api', authRoutes);
-app.use('/api/consultas', consultaRoutes);
-app.use('/api/mongo', mongoRoutes);
+app.use('/api', rutaNoEncontrada);           // 404 en formato JSON
+app.use(manejarErrores);                     // 400 JSON mal formado, 413, 500
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`Servidor Backend corriendo en http://localhost:${PORT}`);
+    console.log(`Servidor Kalo corriendo en http://localhost:${PORT}`);
 });

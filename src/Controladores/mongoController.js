@@ -1,8 +1,11 @@
 /**
- * CONTROLADOR MONGODB (ETAPA 2 - NoSQL KALO)
- * Asignatura: ICI324 Desarrollo Web y Bases de Datos
+ * CONTROLADOR MONGODB (Etapa 2 · Kalo)
+ * Todas las respuestas usan el mismo formato:
+ *   éxito → { exito: true, ..., datos | pedido | platillo | usuario }
+ *   error → { exito: false, codigo, mensaje }
+ * Quién hace cada acción se toma del token (req.usuario), no del cuerpo de la solicitud.
  */
-
+const crypto = require('crypto');
 const Usuario = require('../Modelos/mongo/Usuario');
 const PlanNutricional = require('../Modelos/mongo/PlanNutricional');
 const Restaurante = require('../Modelos/mongo/Restaurante');
@@ -11,50 +14,87 @@ const Platillo = require('../Modelos/mongo/Platillo');
 const Pedido = require('../Modelos/mongo/Pedido');
 const { mongoose } = require('../config/mongo');
 
+const COSTO_ENVIO = 1490;
+const MAX_INTENTOS_PIN = 5;
+const ESTADOS = ['Pendiente', 'Pagado', 'En Preparación', 'En Camino', 'Entregado', 'Cancelado'];
+// Avances permitidos del pedido (el restaurante no puede saltar ni retroceder estados)
+const SIGUIENTE = {
+    'Pagado': ['En Preparación', 'Cancelado'],
+    'En Preparación': ['En Camino', 'Cancelado'],
+    'En Camino': [],
+    'Entregado': [],
+    'Cancelado': []
+};
+
+function error(res, http, codigo, mensaje) {
+    return res.status(http).json({ exito: false, codigo, mensaje });
+}
+
+function falla(res, e, mensaje) {
+    console.error(mensaje, e);
+    if (e.name === 'ValidationError') {
+        return error(res, 422, 'DATOS_INVALIDOS', Object.values(e.errors).map(x => x.message).join(' '));
+    }
+    if (e.name === 'CastError') return error(res, 400, 'ID_INVALIDO', 'El identificador enviado no es válido.');
+    return error(res, 500, 'ERROR_INTERNO', mensaje);
+}
+
 function verificarConexion(res) {
     if (mongoose.connection.readyState !== 1) {
-        res.status(503).json({
-            exito: false,
-            mensaje: 'El servicio de base de datos en la nube (MongoDB Atlas) no se encuentra disponible momentáneamente.'
-        });
+        error(res, 503, 'BD_NO_DISPONIBLE', 'La base de datos no está disponible en este momento. Intenta de nuevo en unos minutos.');
         return false;
     }
     return true;
 }
 
+const esId = (id) => mongoose.Types.ObjectId.isValid(id);
+// Escapa el texto del buscador para usarlo en $regex sin que el usuario inyecte expresiones
+const escaparRegex = (t) => String(t).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const pinAleatorio = () => String(crypto.randomInt(0, 10000)).padStart(4, '0');
+
+// Quita el PIN de un pedido cuando quien consulta no es el cliente dueño
+function ocultarPin(pedido, usuario) {
+    const p = pedido.toObject ? pedido.toObject() : { ...pedido };
+    const esDueno = usuario && usuario.rol === 'cliente' && String(p.cliente?.usuario_id) === String(usuario.id);
+    if (!esDueno) delete p.pin_seguridad;
+    delete p.intentos_pin;
+    return p;
+}
+
 // ALGORITMO DE CÁLCULO DE TRANSPARENCIA KALO (50% base + opcionales hasta 100%)
 function calcularIndiceTransparencia(datos) {
     let porcentaje = 50; // Base por nombre, precio y calorías
-
     if (datos.proteinas && parseFloat(datos.proteinas) > 0) porcentaje += 10;
     if (datos.carbos && parseFloat(datos.carbos) > 0) porcentaje += 10;
     if (datos.grasas && parseFloat(datos.grasas) > 0) porcentaje += 10;
     if (datos.peso_porcion && parseFloat(datos.peso_porcion) > 0) porcentaje += 10;
-    if (datos.alergenos && datos.alergenos.trim().length > 3) porcentaje += 5;
+    if (datos.alergenos && String(datos.alergenos).trim().length > 3) porcentaje += 5;
     if (datos.ingredientes_limpios === true || datos.ingredientes_limpios === 'true') porcentaje += 5;
     if (Array.isArray(datos.ingredientes) && datos.ingredientes.length > 0) porcentaje += 10;
-
     return Math.min(porcentaje, 100);
 }
 
-// 1. Catálogo General de Platillos
+// ─────────────────────────────────────────────────────────────────────
+// CATÁLOGO (público)
+// ─────────────────────────────────────────────────────────────────────
+
+// GET /api/mongo/platillos?categoria=&busqueda=&maxCalorias=&minProteina=
 exports.obtenerPlatillos = async (req, res) => {
     if (!verificarConexion(res)) return;
     try {
         const { categoria, busqueda, maxCalorias, minProteina } = req.query;
-        let filtro = { activo: true };
-
-        if (categoria && categoria !== 'todas') {
-            filtro.categoria = categoria;
+        const filtro = { activo: true };
+        if (categoria && categoria !== 'todas') filtro.categoria = String(categoria);
+        if (busqueda) filtro.nombre = { $regex: escaparRegex(busqueda), $options: 'i' };
+        if (maxCalorias !== undefined) {
+            const n = parseInt(maxCalorias, 10);
+            if (!(n > 0)) return error(res, 400, 'PARAMETRO_INVALIDO', 'maxCalorias debe ser un número mayor que 0.');
+            filtro.calorias = { $lte: n };
         }
-        if (busqueda) {
-            filtro.nombre = { $regex: busqueda, $options: 'i' };
-        }
-        if (maxCalorias) {
-            filtro.calorias = { $lte: parseInt(maxCalorias) };
-        }
-        if (minProteina) {
-            filtro['macronutrientes.proteinas_g'] = { $gte: parseFloat(minProteina) };
+        if (minProteina !== undefined) {
+            const n = parseFloat(minProteina);
+            if (!(n >= 0)) return error(res, 400, 'PARAMETRO_INVALIDO', 'minProteina debe ser un número mayor o igual a 0.');
+            filtro['macronutrientes.proteinas_g'] = { $gte: n };
         }
 
         const platillos = await Platillo.find(filtro)
@@ -64,158 +104,98 @@ exports.obtenerPlatillos = async (req, res) => {
             exito: true,
             total: platillos.length,
             operacion: 'find()',
-            descripcion: 'Listado completo de platillos con información calórica y macronutrientes',
-            consultaMQL: 'Platillo.find({ activo: true }).sort({ indice_transparencia: -1 })',
+            descripcion: 'Platillos activos con calorías y macronutrientes',
+            consultaMQL: `Platillo.find(${JSON.stringify(filtro)}).sort({ indice_transparencia: -1, precio: 1 })`,
             datos: platillos
         });
-    } catch (error) {
-        res.status(500).json({ exito: false, mensaje: 'Error al obtener los platillos', detalle: error.message });
+    } catch (e) {
+        falla(res, e, 'Error al obtener los platillos');
     }
 };
 
-// 2. OPERADORES NoSQL ($lte): Filtrar platillos ligeros
+// GET /api/mongo/platillos-fit?maxCalorias=500  (operador $lte)
 exports.obtenerPlatillosLigeros = async (req, res) => {
     if (!verificarConexion(res)) return;
     try {
-        const limiteCalorias = parseInt(req.query.maxCalorias) || 500;
-        const platillos = await Platillo.find({
-            calorias: { $lte: limiteCalorias },
-            activo: true
-        }).sort({ calorias: 1 });
-
+        const limite = req.query.maxCalorias === undefined ? 500 : parseInt(req.query.maxCalorias, 10);
+        if (!(limite > 0)) return error(res, 400, 'PARAMETRO_INVALIDO', 'maxCalorias debe ser un número mayor que 0.');
+        const platillos = await Platillo.find({ calorias: { $lte: limite }, activo: true }).sort({ calorias: 1 });
         res.status(200).json({
             exito: true,
             total: platillos.length,
             operacion: 'find() con operador $lte',
-            descripcion: `Platillos saludables con un máximo de ${limiteCalorias} kcal`,
-            consultaMQL: `Platillo.find({ calorias: { $lte: ${limiteCalorias} }, activo: true }).sort({ calorias: 1 })`,
+            descripcion: `Platillos con un máximo de ${limite} kcal`,
+            consultaMQL: `Platillo.find({ calorias: { $lte: ${limite} }, activo: true }).sort({ calorias: 1 })`,
             datos: platillos
         });
-    } catch (error) {
-        res.status(500).json({ exito: false, mensaje: 'Error al filtrar platillos por calorías', detalle: error.message });
+    } catch (e) {
+        falla(res, e, 'Error al filtrar platillos por calorías');
     }
 };
 
-// 3. CREAR NUEVO PLATILLO CON CÁLCULO DINÁMICO DE TRANSPARENCIA (Restaurante)
-exports.crearPlatillo = async (req, res) => {
-    if (!verificarConexion(res)) return;
-    try {
-        const { 
-            nombre, descripcion, precio, calorias, 
-            categoria, imagen_url,
-            proteinas, carbos, grasas, 
-            peso_porcion, alergenos, ingredientes_limpios,
-            ingredientes,
-            restaurante_id 
-        } = req.body;
-
-        if (!nombre || !precio || !calorias) {
-            return res.status(400).json({
-                exito: false,
-                mensaje: 'El nombre, precio y calorías estimadas son obligatorios.'
-            });
-        }
-
-        let idRest = restaurante_id;
-        if (!idRest) {
-            const primerRest = await Restaurante.findOne();
-            idRest = primerRest ? primerRest._id : null;
-        }
-
-        // Cálculo dinámico del porcentaje de transparencia
-        const indiceCalculado = calcularIndiceTransparencia({
-            proteinas, carbos, grasas, peso_porcion, alergenos, ingredientes_limpios, ingredientes
-        });
-
-        const nuevoPlatillo = await Platillo.create({
-            nombre: nombre.trim(),
-            descripcion: descripcion ? descripcion.trim() : 'Plato nutritivo Kalo',
-            categoria: categoria || 'Almuerzo',
-            imagen_url: imagen_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80',
-            precio: parseFloat(precio),
-            calorias: parseInt(calorias),
-            macronutrientes: {
-                proteinas_g: parseFloat(proteinas) || 0,
-                carbohidratos_g: parseFloat(carbos) || 0,
-                grasas_g: parseFloat(grasas) || 0
-            },
-            ingredientes: Array.isArray(ingredientes) ? ingredientes : [],
-            peso_porcion_g: peso_porcion ? parseFloat(peso_porcion) : 350,
-            alergenos: alergenos ? alergenos.trim() : 'No declarados',
-            ingredientes_limpios: Boolean(ingredientes_limpios),
-            indice_transparencia: indiceCalculado,
-            restaurante_id: idRest
-        });
-
-        res.status(201).json({
-            exito: true,
-            mensaje: `¡Platillo registrado! Tu Índice de Transparencia obtenido es del ${indiceCalculado}%.`,
-            operacion: 'create()',
-            consultaMQL: `Platillo.create({ nombre: "${nombre}", indice_transparencia: ${indiceCalculado}, ... })`,
-            platillo: nuevoPlatillo
-        });
-    } catch (error) {
-        res.status(500).json({ exito: false, mensaje: 'Error al registrar el platillo', detalle: error.message });
-    }
-};
-
-// 4. JOIN NoSQL ($lookup): Cruzar Platillos con su Restaurante
+// GET /api/mongo/platillos-con-restaurante  (JOIN con $lookup)
 exports.obtenerPlatillosConRestaurante = async (req, res) => {
     if (!verificarConexion(res)) return;
     try {
-        const pipeline = [
-            {
-                $lookup: {
-                    from: 'restaurantes',
-                    localField: 'restaurante_id',
-                    foreignField: '_id',
-                    as: 'restaurante'
-                }
-            },
-            {
-                $unwind: '$restaurante'
-            },
+        const resultado = await Platillo.aggregate([
+            { $match: { activo: true } },
+            { $lookup: { from: 'restaurantes', localField: 'restaurante_id', foreignField: '_id', as: 'restaurante' } },
+            { $unwind: '$restaurante' },
             {
                 $project: {
-                    nombre: 1,
-                    descripcion: 1,
-                    categoria: 1,
-                    imagen_url: 1,
-                    precio: 1,
-                    calorias: 1,
-                    indice_transparencia: 1,
-                    peso_porcion_g: 1,
-                    alergenos: 1,
-                    ingredientes_limpios: 1,
-                    macronutrientes: 1,
-                    ingredientes: 1,
-                    'restaurante.nombre': 1,
-                    'restaurante.especialidad': 1,
-                    'restaurante.direccion': 1,
-                    'restaurante.telefono': 1
+                    nombre: 1, descripcion: 1, categoria: 1, imagen_url: 1, precio: 1, calorias: 1,
+                    indice_transparencia: 1, peso_porcion_g: 1, alergenos: 1, ingredientes_limpios: 1,
+                    macronutrientes: 1, ingredientes: 1,
+                    'restaurante.nombre': 1, 'restaurante.especialidad': 1,
+                    'restaurante.direccion': 1, 'restaurante.telefono': 1
                 }
             }
-        ];
-
-        const resultado = await Platillo.aggregate(pipeline);
+        ]);
         res.status(200).json({
             exito: true,
             total: resultado.length,
             operacion: 'aggregate() con $lookup (JOIN NoSQL)',
-            descripcion: 'Cruce relacional entre la colección de Platillos y Restaurantes',
-            consultaMQL: 'Platillo.aggregate([ { $lookup: { from: "restaurantes", ... } }, { $unwind: "$restaurante" } ])',
+            descripcion: 'Cada platillo junto con los datos de su restaurante',
+            consultaMQL: 'Platillo.aggregate([ { $match: { activo: true } }, { $lookup: { from: "restaurantes", localField: "restaurante_id", foreignField: "_id", as: "restaurante" } }, { $unwind: "$restaurante" } ])',
             datos: resultado
         });
-    } catch (error) {
-        res.status(500).json({ exito: false, mensaje: 'Error al ejecutar JOIN NoSQL ($lookup)', detalle: error.message });
+    } catch (e) {
+        falla(res, e, 'Error al ejecutar el JOIN ($lookup)');
     }
 };
 
-// 5. GROUP BY NoSQL ($group): Estadísticas biométricas por género
+// GET /api/mongo/planes?precioMin=20  (WHERE + ORDER BY)
+exports.obtenerPlanes = async (req, res) => {
+    if (!verificarConexion(res)) return;
+    try {
+        const filtro = { activo: true };
+        if (req.query.precioMin !== undefined) {
+            const n = parseFloat(req.query.precioMin);
+            if (!(n >= 0)) return error(res, 400, 'PARAMETRO_INVALIDO', 'precioMin debe ser un número mayor o igual a 0.');
+            filtro.precio_mensual = { $gt: n };
+        }
+        const planes = await PlanNutricional.find(filtro).sort({ precio_mensual: -1 });
+        res.status(200).json({
+            exito: true,
+            total: planes.length,
+            operacion: 'find() con $gt y sort()',
+            consultaMQL: `PlanNutricional.find(${JSON.stringify(filtro)}).sort({ precio_mensual: -1 })`,
+            datos: planes
+        });
+    } catch (e) {
+        falla(res, e, 'Error al obtener los planes');
+    }
+};
+
+// ─────────────────────────────────────────────────────────────────────
+// CONSULTAS CON SESIÓN
+// ─────────────────────────────────────────────────────────────────────
+
+// GET /api/mongo/estadisticas  (GROUP BY con $group)
 exports.obtenerEstadisticasBiometricas = async (req, res) => {
     if (!verificarConexion(res)) return;
     try {
-        const pipeline = [
+        const datos = await Usuario.aggregate([
             {
                 $group: {
                     _id: '$perfil_biometrico.genero',
@@ -228,9 +208,7 @@ exports.obtenerEstadisticasBiometricas = async (req, res) => {
             },
             {
                 $project: {
-                    genero: '$_id',
-                    _id: 0,
-                    totalUsuarios: 1,
+                    genero: '$_id', _id: 0, totalUsuarios: 1,
                     pesoPromedio: { $round: ['$pesoPromedio', 1] },
                     alturaPromedio: { $round: ['$alturaPromedio', 2] },
                     imcPromedio: { $round: ['$imcPromedio', 1] },
@@ -238,392 +216,509 @@ exports.obtenerEstadisticasBiometricas = async (req, res) => {
                 }
             },
             { $sort: { totalUsuarios: -1 } }
-        ];
-
-        const estadisticas = await Usuario.aggregate(pipeline);
+        ]);
         res.status(200).json({
             exito: true,
             operacion: 'aggregate() con $group (GROUP BY NoSQL)',
-            descripcion: 'Agrupación y cálculo de promedios biométricos según género',
-            consultaMQL: 'Usuario.aggregate([ { $group: { _id: "$perfil_biometrico.genero", ... } } ])',
-            datos: estadisticas
+            descripcion: 'Cantidad de clientes y promedios biométricos por género (datos agregados, sin nombres)',
+            consultaMQL: 'Usuario.aggregate([ { $group: { _id: "$perfil_biometrico.genero", totalUsuarios: { $sum: 1 }, imcPromedio: { $avg: "$perfil_biometrico.imc" } } }, { $sort: { totalUsuarios: -1 } } ])',
+            datos
         });
-    } catch (error) {
-        res.status(500).json({ exito: false, mensaje: 'Error en cálculo de estadísticas', detalle: error.message });
+    } catch (e) {
+        falla(res, e, 'Error en el cálculo de estadísticas');
     }
 };
 
-// 6. Listar Pedidos
+// GET /api/mongo/usuarios  (equivale a la consulta SQL 1, con proyección)
+exports.obtenerUsuarios = async (req, res) => {
+    if (!verificarConexion(res)) return;
+    try {
+        const proyeccion = { nombre: 1, fecha_registro: 1, 'perfil_biometrico.genero': 1, 'perfil_biometrico.imc': 1, 'perfil_biometrico.meta_calorica_diaria': 1 };
+        const datos = await Usuario.find({ activo: true }, proyeccion).sort({ nombre: 1 });
+        res.status(200).json({
+            exito: true,
+            total: datos.length,
+            operacion: 'find() con proyección',
+            descripcion: 'Clientes activos, sin correo, teléfono ni contraseña',
+            consultaMQL: `Usuario.find({ activo: true }, ${JSON.stringify(proyeccion)}).sort({ nombre: 1 })`,
+            datos
+        });
+    } catch (e) {
+        falla(res, e, 'Error al obtener los clientes');
+    }
+};
+
+// GET /api/mongo/usuarios-pedidos  (LEFT JOIN: clientes con o sin pedidos)
+exports.obtenerUsuariosConPedidos = async (req, res) => {
+    if (!verificarConexion(res)) return;
+    try {
+        const datos = await Usuario.aggregate([
+            { $lookup: { from: 'pedidos', localField: '_id', foreignField: 'cliente.usuario_id', as: 'pedidos' } },
+            {
+                $project: {
+                    _id: 0, nombre: 1,
+                    cantidad_pedidos: { $size: '$pedidos' },
+                    gasto_total: { $sum: '$pedidos.total' }
+                }
+            },
+            { $sort: { cantidad_pedidos: -1, nombre: 1 } }
+        ]);
+        res.status(200).json({
+            exito: true,
+            total: datos.length,
+            operacion: 'aggregate() con $lookup + $size (LEFT JOIN)',
+            descripcion: 'Todos los clientes con su cantidad de pedidos, incluso los que tienen 0',
+            consultaMQL: 'Usuario.aggregate([ { $lookup: { from: "pedidos", localField: "_id", foreignField: "cliente.usuario_id", as: "pedidos" } }, { $project: { nombre: 1, cantidad_pedidos: { $size: "$pedidos" }, gasto_total: { $sum: "$pedidos.total" } } } ])',
+            datos
+        });
+    } catch (e) {
+        falla(res, e, 'Error al cruzar clientes y pedidos');
+    }
+};
+
+// GET /api/mongo/pedidos  (cada rol ve solo sus pedidos)
 exports.obtenerPedidos = async (req, res) => {
     if (!verificarConexion(res)) return;
     try {
-        const { restaurante_id, repartidor_id } = req.query;
-        let filtro = {};
-        if (restaurante_id && mongoose.Types.ObjectId.isValid(restaurante_id)) {
-            filtro.restaurante_id = restaurante_id;
-        }
-        if (repartidor_id && mongoose.Types.ObjectId.isValid(repartidor_id)) {
-            filtro.repartidor_id = repartidor_id;
+        const { rol, id } = req.usuario;
+        let filtro;
+        if (rol === 'cliente') filtro = { 'cliente.usuario_id': id };
+        else if (rol === 'restaurante') filtro = { restaurante_id: id };
+        else filtro = { $or: [{ repartidor_id: id }, { repartidor_id: null, estado: { $in: ['En Preparación', 'En Camino'] } }] };
+
+        if (req.query.estado) {
+            if (!ESTADOS.includes(req.query.estado)) return error(res, 400, 'PARAMETRO_INVALIDO', `estado debe ser uno de: ${ESTADOS.join(', ')}.`);
+            filtro.estado = req.query.estado;
         }
 
         const pedidos = await Pedido.find(filtro)
             .populate('restaurante_id', 'nombre especialidad direccion')
             .populate('repartidor_id', 'nombre vehiculo telefono')
-            .sort({ fecha_pedido: -1 });
+            .sort({ fecha_pedido: -1 })
+            .limit(100);
 
         res.status(200).json({
             exito: true,
             total: pedidos.length,
             operacion: 'find()',
-            descripcion: 'Listado de pedidos registrados con su estado y PIN de entrega',
-            consultaMQL: 'Pedido.find().sort({ fecha_pedido: -1 })',
-            datos: pedidos
+            descripcion: 'Pedidos del usuario que inició sesión (el PIN solo lo ve el cliente)',
+            consultaMQL: `Pedido.find(${JSON.stringify(filtro)}).sort({ fecha_pedido: -1 }).limit(100)`,
+            datos: pedidos.map(p => ocultarPin(p, req.usuario))
         });
-    } catch (error) {
-        res.status(500).json({ exito: false, mensaje: 'Error al obtener los pedidos', detalle: error.message });
+    } catch (e) {
+        falla(res, e, 'Error al obtener los pedidos');
     }
 };
 
-// 7. Crear Pedido desde Carrito
+// ─────────────────────────────────────────────────────────────────────
+// CLIENTE
+// ─────────────────────────────────────────────────────────────────────
+
+// POST /api/mongo/pedidos  { items: [{ platillo_id, cantidad }] }
+// El precio y el total se calculan en el servidor con los precios guardados (no se confía en el navegador).
 exports.crearPedido = async (req, res) => {
     if (!verificarConexion(res)) return;
     try {
-        const { usuario_id, items, total, restaurante_id } = req.body;
-
-        let usuario = null;
-        if (usuario_id && mongoose.Types.ObjectId.isValid(usuario_id)) {
-            usuario = await Usuario.findById(usuario_id);
+        const { items } = req.body || {};
+        if (!Array.isArray(items) || items.length === 0) {
+            return error(res, 400, 'CARRITO_VACIO', 'Agrega al menos un platillo al carrito.');
         }
-        if (!usuario) {
-            usuario = await Usuario.findOne();
+        if (items.length > 20) {
+            return error(res, 422, 'DEMASIADOS_ITEMS', 'Un pedido puede tener como máximo 20 líneas.');
         }
 
-        if (!usuario) {
-            return res.status(404).json({ exito: false, mensaje: 'No se encontró el usuario que realiza el pedido.' });
+        const usuario = await Usuario.findById(req.usuario.id);
+        if (!usuario) return error(res, 404, 'USUARIO_NO_ENCONTRADO', 'No encontramos tu cuenta.');
+
+        const ids = items.map(it => it.platillo_id || it._id);
+        if (!ids.every(esId)) return error(res, 400, 'ID_INVALIDO', 'Hay un platillo con identificador no válido.');
+        const platillos = await Platillo.find({ _id: { $in: ids }, activo: true });
+        const porId = new Map(platillos.map(p => [String(p._id), p]));
+
+        const detalles = [];
+        const restaurantes = new Set();
+        for (const it of items) {
+            const plato = porId.get(String(it.platillo_id || it._id));
+            if (!plato) return error(res, 404, 'PLATILLO_NO_ENCONTRADO', 'Uno de los platillos ya no está disponible.');
+            const cantidad = parseInt(it.cantidad, 10) || 1;
+            if (cantidad < 1 || cantidad > 20) return error(res, 422, 'CANTIDAD_INVALIDA', 'La cantidad de cada platillo debe estar entre 1 y 20.');
+            restaurantes.add(String(plato.restaurante_id));
+            // Snapshot: se guarda el precio del momento; si el platillo cambia de precio, el pedido no cambia
+            detalles.push({
+                platillo_id: plato._id,
+                nombre_platillo: plato.nombre,
+                cantidad,
+                precio_unitario: plato.precio,
+                subtotal: plato.precio * cantidad
+            });
+        }
+        if (restaurantes.size > 1) {
+            return error(res, 422, 'VARIOS_RESTAURANTES', 'Un pedido solo puede tener platillos de un mismo restaurante.');
         }
 
-        let detallesFormateados = [];
-        let totalCalculado = 0;
-        let restIdDetectado = restaurante_id;
-
-        if (Array.isArray(items) && items.length > 0) {
-            for (const it of items) {
-                const sub = (parseFloat(it.precio) || 0) * (parseInt(it.cantidad) || 1);
-                totalCalculado += sub;
-                
-                let idPlato = it.platillo_id;
-                if (!idPlato || !mongoose.Types.ObjectId.isValid(idPlato)) {
-                    idPlato = new mongoose.Types.ObjectId();
-                }
-
-                // Detectar a qué restaurante pertenece el platillo
-                if (!restIdDetectado && it.restaurante_id) {
-                    restIdDetectado = it.restaurante_id._id || it.restaurante_id;
-                } else if (!restIdDetectado && mongoose.Types.ObjectId.isValid(idPlato)) {
-                    const platoDoc = await Platillo.findById(idPlato);
-                    if (platoDoc && platoDoc.restaurante_id) {
-                        restIdDetectado = platoDoc.restaurante_id;
-                    }
-                }
-
-                detallesFormateados.push({
-                    platillo_id: idPlato,
-                    nombre_platillo: it.nombre || 'Platillo Kalo',
-                    cantidad: parseInt(it.cantidad) || 1,
-                    precio_unitario: parseFloat(it.precio) || 0,
-                    subtotal: sub
-                });
-            }
-        }
-
-        // Si aún no se detectó el restaurante, vincular con el primero como fallback
-        if (!restIdDetectado) {
-            const primerRestaurante = await Restaurante.findOne();
-            restIdDetectado = primerRestaurante ? primerRestaurante._id : null;
-        }
-
-        const codigoRandom = `KALO-2026-${Math.floor(1000 + Math.random() * 9000)}`;
-        const pinRandom = String(Math.floor(1000 + Math.random() * 9000));
+        const total = detalles.reduce((s, d) => s + d.subtotal, 0) + COSTO_ENVIO;
+        const codigo = `KALO-${new Date().getFullYear()}-${crypto.randomInt(100000, 1000000)}`;
 
         const nuevoPedido = await Pedido.create({
-            codigo_pedido: codigoRandom,
+            codigo_pedido: codigo,
             fecha_pedido: new Date(),
-            estado: 'En Preparación', // Estado inicial tras pagar
-            pin_seguridad: pinRandom,
-            calificacion_transp: 5,
+            estado: 'En Preparación',
             cliente: {
                 usuario_id: usuario._id,
                 nombre: usuario.nombre,
                 correo: usuario.correo,
-                telefono: usuario.telefono || '+56912345678'
+                telefono: usuario.telefono
             },
-            restaurante_id: restIdDetectado,
-            detalles: detallesFormateados,
-            total: total || (totalCalculado + 1490) || 10480
+            restaurante_id: [...restaurantes][0],
+            detalles,
+            total
         });
 
         res.status(201).json({
             exito: true,
-            mensaje: `¡Pedido ${codigoRandom} creado exitosamente! Tu PIN de entrega es: ${pinRandom}`,
+            mensaje: `¡Pedido ${codigo} creado! Verás tu PIN de entrega cuando el pedido salga del local.`,
             operacion: 'create()',
-            consultaMQL: `Pedido.create({ codigo_pedido: "${codigoRandom}", pin_seguridad: "${pinRandom}" })`,
-            pedido: nuevoPedido
+            consultaMQL: `Pedido.create({ codigo_pedido: "${codigo}", estado: "En Preparación", cliente: {...}, detalles: [...], total: ${total} })`,
+            pedido: ocultarPin(nuevoPedido, req.usuario)
         });
-    } catch (error) {
-        console.error('Error al crear pedido:', error);
-        res.status(500).json({ 
-            exito: false, 
-            mensaje: 'Error al registrar el pedido en Atlas: ' + error.message, 
-            detalle: error.message 
-        });
+    } catch (e) {
+        falla(res, e, 'Error al registrar el pedido');
     }
 };
 
-// 8. Actualizar Estado de Pedido (Kanban Restaurante / Repartidor)
-exports.actualizarEstadoPedido = async (req, res) => {
-    if (!verificarConexion(res)) return;
-    const { codigo_pedido, nuevo_estado, repartidor_id } = req.body;
-
-    if (!codigo_pedido || !nuevo_estado) {
-        return res.status(400).json({ exito: false, mensaje: 'Faltan parámetros requeridos.' });
-    }
-
-    try {
-        const pedido = await Pedido.findOne({ codigo_pedido });
-        if (!pedido) {
-            return res.status(404).json({ exito: false, mensaje: `Pedido ${codigo_pedido} no encontrado.` });
-        }
-
-        pedido.estado = nuevo_estado;
-        if (repartidor_id) {
-            pedido.repartidor_id = repartidor_id;
-        }
-        await pedido.save();
-
-        res.status(200).json({
-            exito: true,
-            mensaje: `El estado del pedido ${codigo_pedido} ha cambiado a: ${nuevo_estado}`,
-            operacion: 'updateOne() con $set',
-            consultaMQL: `Pedido.updateOne({ codigo_pedido: "${codigo_pedido}" }, { $set: { estado: "${nuevo_estado}" } })`,
-            pedido
-        });
-    } catch (error) {
-        res.status(500).json({ exito: false, mensaje: 'Error al actualizar pedido', detalle: error.message });
-    }
-};
-
-// 9. Aceptar Pedido (Repartidor)
-exports.aceptarPedido = async (req, res) => {
-    if (!verificarConexion(res)) return;
-    const { codigo_pedido, repartidor_id } = req.body;
-
-    if (!codigo_pedido) {
-        return res.status(400).json({ exito: false, mensaje: 'Debes proporcionar el código de pedido.' });
-    }
-
-    try {
-        const pedido = await Pedido.findOne({ codigo_pedido });
-        if (!pedido) {
-            return res.status(404).json({ exito: false, mensaje: `Pedido ${codigo_pedido} no encontrado.` });
-        }
-
-        pedido.estado = 'En Camino';
-        if (repartidor_id) pedido.repartidor_id = repartidor_id;
-        await pedido.save();
-
-        res.status(200).json({
-            exito: true,
-            mensaje: `¡Has aceptado el pedido ${codigo_pedido}! Ahora está en reparto hacia el cliente.`,
-            operacion: 'updateOne() con $set',
-            consultaMQL: `Pedido.updateOne({ codigo_pedido: "${codigo_pedido}" }, { $set: { estado: "En Camino" } })`,
-            pedido
-        });
-    } catch (error) {
-        res.status(500).json({ exito: false, mensaje: 'Error al aceptar el pedido', detalle: error.message });
-    }
-};
-
-// 10. Validar PIN (Repartidor Mobile-First)
-exports.validarPinEntrega = async (req, res) => {
-    if (!verificarConexion(res)) return;
-    const { codigo_pedido, pin_ingresado } = req.body;
-
-    if (!codigo_pedido || !pin_ingresado) {
-        return res.status(400).json({
-            exito: false,
-            mensaje: 'Debes proporcionar el código de pedido y el PIN de 4 dígitos.'
-        });
-    }
-
-    try {
-        const pedido = await Pedido.findOne({ codigo_pedido });
-
-        if (!pedido) {
-            return res.status(404).json({ exito: false, mensaje: `Pedido no encontrado: ${codigo_pedido}` });
-        }
-
-        if (pedido.estado === 'Entregado') {
-            return res.status(400).json({ exito: false, mensaje: 'Este pedido ya fue entregado previamente.' });
-        }
-
-        if (pedido.pin_seguridad !== pin_ingresado.trim()) {
-            return res.status(401).json({ exito: false, mensaje: 'PIN de entrega incorrecto.' });
-        }
-
-        pedido.estado = 'Entregado';
-        await pedido.save();
-
-        res.status(200).json({
-            exito: true,
-            mensaje: '¡Entrega confirmada exitosamente! El PIN ha sido validado correctamente.',
-            operacion: 'updateOne() con $set',
-            consultaMQL: `Pedido.updateOne({ codigo_pedido: "${codigo_pedido}" }, { $set: { estado: "Entregado" } })`,
-            pedido
-        });
-    } catch (error) {
-        res.status(500).json({ exito: false, mensaje: 'Error al validar el PIN', detalle: error.message });
-    }
-};
-
-// 11. EVALUAR PEDIDO (Expectativa vs Realidad - Transparencia)
+// POST /api/mongo/pedidos/evaluar
 exports.evaluarPedido = async (req, res) => {
     if (!verificarConexion(res)) return;
     try {
-        const { codigo_pedido, similitud_foto, gramaje_porcion, velocidad_prep, calificacion_general, comentario } = req.body;
+        const { codigo_pedido, similitud_foto, gramaje_porcion, velocidad_prep, calificacion_general, comentario } = req.body || {};
+        if (!codigo_pedido) return error(res, 400, 'DATOS_FALTANTES', 'Indica el código del pedido.');
 
-        const pedido = await Pedido.findOne({ codigo_pedido });
-        if (!pedido) {
-            return res.status(404).json({ exito: false, mensaje: 'Pedido no encontrado' });
+        const notas = { similitud_foto, gramaje_porcion, velocidad_prep, calificacion_general };
+        for (const [campo, valor] of Object.entries(notas)) {
+            const n = parseInt(valor, 10);
+            if (!(n >= 1 && n <= 5)) return error(res, 422, 'NOTA_INVALIDA', `${campo} debe ser un número entre 1 y 5.`);
+            notas[campo] = n;
         }
 
-        pedido.evaluacion = {
-            similitud_foto: parseInt(similitud_foto) || 5,
-            gramaje_porcion: parseInt(gramaje_porcion) || 5,
-            velocidad_prep: parseInt(velocidad_prep) || 5,
-            calificacion_general: parseInt(calificacion_general) || 5,
-            comentario: comentario ? comentario.trim() : '',
-            fecha_evaluacion: new Date()
-        };
+        const pedido = await Pedido.findOne({ codigo_pedido, 'cliente.usuario_id': req.usuario.id });
+        if (!pedido) return error(res, 404, 'PEDIDO_NO_ENCONTRADO', 'No encontramos ese pedido entre los tuyos.');
+        if (pedido.estado !== 'Entregado') return error(res, 409, 'PEDIDO_NO_ENTREGADO', 'Solo puedes evaluar un pedido que ya fue entregado.');
+
+        pedido.evaluacion = { ...notas, comentario: comentario ? String(comentario).trim().slice(0, 500) : '', fecha_evaluacion: new Date() };
+        pedido.calificacion_transp = notas.calificacion_general;
         await pedido.save();
 
         res.status(200).json({
             exito: true,
-            mensaje: '¡Gracias! Tu evaluación fue registrada exitosamente y actualizó el Índice de Transparencia.',
+            mensaje: '¡Gracias! Tu evaluación quedó registrada.',
             operacion: 'updateOne() con subdocumento evaluacion',
-            consultaMQL: `Pedido.updateOne({ codigo_pedido: "${codigo_pedido}" }, { $set: { evaluacion: ... } })`,
-            pedido
+            consultaMQL: `Pedido.updateOne({ codigo_pedido: "${codigo_pedido}" }, { $set: { evaluacion: {...} } })`,
+            pedido: ocultarPin(pedido, req.usuario)
         });
-    } catch (error) {
-        res.status(500).json({ exito: false, mensaje: 'Error al guardar la evaluación', detalle: error.message });
+    } catch (e) {
+        falla(res, e, 'Error al guardar la evaluación');
     }
 };
 
-// 12. Listar Planes Nutricionales
-exports.obtenerPlanes = async (req, res) => {
-    if (!verificarConexion(res)) return;
-    try {
-        const planes = await PlanNutricional.find({ activo: true });
-        res.status(200).json({
-            exito: true,
-            datos: planes
-        });
-    } catch (error) {
-        res.status(500).json({ exito: false, mensaje: 'Error al obtener planes', detalle: error.message });
-    }
-};
-
-// 13. Actualizar Perfil Biométrico
+// PUT /api/mongo/usuarios/biometrico  { peso, altura, edad, genero, nombre?, telefono? }
 exports.actualizarPerfilBiometrico = async (req, res) => {
     if (!verificarConexion(res)) return;
     try {
-        const { usuario_id, peso, altura, edad, genero } = req.body;
-        const usuario = await Usuario.findById(usuario_id);
-        if (!usuario) {
-            return res.status(404).json({ exito: false, mensaje: 'Usuario no encontrado' });
+        const { peso, altura, edad, genero, nombre, telefono } = req.body || {};
+        const usuario = await Usuario.findById(req.usuario.id);
+        if (!usuario) return error(res, 404, 'USUARIO_NO_ENCONTRADO', 'No encontramos tu cuenta.');
+
+        const pb = usuario.perfil_biometrico;
+        const pesoKg = peso !== undefined ? parseFloat(peso) : pb.peso_kg;
+        const alturaM = altura !== undefined ? parseFloat(altura) : pb.altura_m;
+        if (!(pesoKg >= 20 && pesoKg <= 350) || !(alturaM >= 1 && alturaM <= 2.5)) {
+            return error(res, 422, 'BIOMETRIA_INVALIDA', 'El peso debe estar entre 20 y 350 kg y la altura entre 1,00 y 2,50 m.');
         }
+        pb.peso_kg = pesoKg;
+        pb.altura_m = alturaM;
+        if (edad !== undefined) pb.edad = parseInt(edad, 10);
+        if (genero) pb.genero = genero;
+        pb.imc = parseFloat((pesoKg / (alturaM * alturaM)).toFixed(1));
 
-        const pesoKg = parseFloat(peso) || usuario.perfil_biometrico.peso_kg;
-        const alturaM = parseFloat(altura) || usuario.perfil_biometrico.altura_m;
-        const imcCalc = parseFloat((pesoKg / (alturaM * alturaM)).toFixed(1));
-
-        usuario.perfil_biometrico.peso_kg = pesoKg;
-        usuario.perfil_biometrico.altura_m = alturaM;
-        if (edad) usuario.perfil_biometrico.edad = parseInt(edad);
-        if (genero) usuario.perfil_biometrico.genero = genero;
-        usuario.perfil_biometrico.imc = imcCalc;
+        // Cambio hipotético "un cliente cambia su nombre o teléfono": se actualiza la cuenta y,
+        // con una sola instrucción, la copia (referencia extendida) que guardan sus pedidos.
+        const copia = {};
+        if (nombre && nombre.trim()) { usuario.nombre = nombre.trim(); copia['cliente.nombre'] = usuario.nombre; }
+        if (telefono && telefono.trim()) { usuario.telefono = telefono.trim(); copia['cliente.telefono'] = usuario.telefono; }
 
         await usuario.save();
+        let pedidosActualizados = 0;
+        if (Object.keys(copia).length) {
+            const r = await Pedido.updateMany({ 'cliente.usuario_id': usuario._id }, { $set: copia });
+            pedidosActualizados = r.modifiedCount;
+        }
+
         res.status(200).json({
             exito: true,
-            mensaje: 'Perfil biométrico actualizado exitosamente.',
+            mensaje: 'Perfil actualizado.',
+            operacion: 'updateOne() con $set (y updateMany en pedidos si cambia el nombre o teléfono)',
+            pedidos_actualizados: pedidosActualizados,
             usuario
         });
-    } catch (error) {
-        res.status(500).json({ exito: false, mensaje: 'Error al actualizar datos biométricos', detalle: error.message });
+    } catch (e) {
+        falla(res, e, 'Error al actualizar el perfil');
     }
 };
 
-// 14. Eliminar Datos de Salud (Ley 21.713 / GDPR)
+// DELETE /api/mongo/usuarios/:usuario_id  (derecho de supresión, Ley 21.719)
 exports.eliminarUsuario = async (req, res) => {
     if (!verificarConexion(res)) return;
     try {
         const { usuario_id } = req.params;
-        await Usuario.findByIdAndDelete(usuario_id);
-        await Pedido.deleteMany({ 'cliente.usuario_id': usuario_id });
+        if (!esId(usuario_id)) return error(res, 400, 'ID_INVALIDO', 'El identificador no es válido.');
+        if (String(usuario_id) !== String(req.usuario.id)) {
+            return error(res, 403, 'SIN_PERMISO', 'Solo puedes eliminar tu propia cuenta.');
+        }
+        const borrado = await Usuario.findByIdAndDelete(usuario_id);
+        if (!borrado) return error(res, 404, 'USUARIO_NO_ENCONTRADO', 'La cuenta ya no existe.');
+        const r = await Pedido.deleteMany({ 'cliente.usuario_id': usuario_id });
 
         res.status(200).json({
             exito: true,
-            mensaje: 'Tus datos de salud y cuenta han sido eliminados permanentemente.'
+            mensaje: 'Tu cuenta y tus datos de salud fueron eliminados.',
+            pedidos_eliminados: r.deletedCount
         });
-    } catch (error) {
-        res.status(500).json({ exito: false, mensaje: 'Error al eliminar datos', detalle: error.message });
+    } catch (e) {
+        falla(res, e, 'Error al eliminar los datos');
     }
 };
 
-// 15. Listar Repartidores (Para selección dinámica en despacho)
+// ─────────────────────────────────────────────────────────────────────
+// RESTAURANTE
+// ─────────────────────────────────────────────────────────────────────
+
+// POST /api/mongo/platillos
+exports.crearPlatillo = async (req, res) => {
+    if (!verificarConexion(res)) return;
+    try {
+        const {
+            nombre, descripcion, precio, calorias, categoria, imagen_url,
+            proteinas, carbos, grasas, peso_porcion, alergenos, ingredientes_limpios, ingredientes
+        } = req.body || {};
+
+        if (!nombre || precio === undefined || calorias === undefined) {
+            return error(res, 400, 'DATOS_FALTANTES', 'El nombre, el precio y las calorías son obligatorios.');
+        }
+        const precioN = parseFloat(precio);
+        const caloriasN = parseInt(calorias, 10);
+        if (!(precioN > 0) || !(caloriasN > 0)) {
+            return error(res, 422, 'DATOS_INVALIDOS', 'El precio y las calorías deben ser números mayores que 0.');
+        }
+        if (Array.isArray(ingredientes) && ingredientes.length > 30) {
+            return error(res, 422, 'DEMASIADOS_INGREDIENTES', 'Un platillo puede tener como máximo 30 ingredientes.');
+        }
+
+        const indice = calcularIndiceTransparencia({ proteinas, carbos, grasas, peso_porcion, alergenos, ingredientes_limpios, ingredientes });
+
+        const nuevo = await Platillo.create({
+            nombre: String(nombre).trim(),
+            descripcion: descripcion ? String(descripcion).trim() : undefined,
+            categoria: categoria || 'Almuerzo',
+            imagen_url: imagen_url || undefined,
+            precio: precioN,
+            calorias: caloriasN,
+            macronutrientes: {
+                proteinas_g: parseFloat(proteinas) || 0,
+                carbohidratos_g: parseFloat(carbos) || 0,
+                grasas_g: parseFloat(grasas) || 0
+            },
+            ingredientes: Array.isArray(ingredientes) ? ingredientes : [],
+            peso_porcion_g: peso_porcion ? parseFloat(peso_porcion) : null,
+            alergenos: alergenos ? String(alergenos).trim() : undefined,
+            ingredientes_limpios: ingredientes_limpios === true || ingredientes_limpios === 'true',
+            indice_transparencia: indice,
+            restaurante_id: req.usuario.id // el restaurante sale del token
+        });
+
+        res.status(201).json({
+            exito: true,
+            mensaje: `¡Platillo registrado! Su Índice de Transparencia es ${indice}%.`,
+            operacion: 'create()',
+            consultaMQL: `Platillo.create({ nombre: "${nuevo.nombre}", indice_transparencia: ${indice}, ... })`,
+            platillo: nuevo
+        });
+    } catch (e) {
+        falla(res, e, 'Error al registrar el platillo');
+    }
+};
+
+// PUT /api/mongo/pedidos/estado  { codigo_pedido, nuevo_estado, repartidor_id? }
+// Al pasar a "En Camino" (despacho) se genera el PIN de 4 dígitos.
+exports.actualizarEstadoPedido = async (req, res) => {
+    if (!verificarConexion(res)) return;
+    const { codigo_pedido, nuevo_estado, repartidor_id } = req.body || {};
+    if (!codigo_pedido || !nuevo_estado) {
+        return error(res, 400, 'DATOS_FALTANTES', 'Indica codigo_pedido y nuevo_estado.');
+    }
+    if (!ESTADOS.includes(nuevo_estado)) {
+        return error(res, 422, 'ESTADO_INVALIDO', `nuevo_estado debe ser uno de: ${ESTADOS.join(', ')}.`);
+    }
+    try {
+        const pedido = await Pedido.findOne({ codigo_pedido, restaurante_id: req.usuario.id });
+        if (!pedido) return error(res, 404, 'PEDIDO_NO_ENCONTRADO', `El pedido ${codigo_pedido} no existe en tu local.`);
+
+        const permitidos = SIGUIENTE[pedido.estado] || [];
+        if (!permitidos.includes(nuevo_estado)) {
+            return error(res, 409, 'CAMBIO_NO_PERMITIDO', `Un pedido "${pedido.estado}" no puede pasar a "${nuevo_estado}".`);
+        }
+
+        if (nuevo_estado === 'En Camino') {
+            if (repartidor_id) {
+                if (!esId(repartidor_id) || !(await Repartidor.exists({ _id: repartidor_id, activo: true }))) {
+                    return error(res, 404, 'REPARTIDOR_NO_ENCONTRADO', 'El repartidor elegido no existe o no está activo.');
+                }
+                pedido.repartidor_id = repartidor_id;
+            }
+            pedido.pin_seguridad = pinAleatorio();
+            pedido.pin_generado_en = new Date();
+            pedido.intentos_pin = 0;
+        }
+        pedido.estado = nuevo_estado;
+        await pedido.save();
+
+        res.status(200).json({
+            exito: true,
+            mensaje: nuevo_estado === 'En Camino'
+                ? `Pedido ${codigo_pedido} despachado. El cliente ya puede ver su PIN.`
+                : `El pedido ${codigo_pedido} pasó a: ${nuevo_estado}`,
+            operacion: 'updateOne() con $set',
+            consultaMQL: `Pedido.updateOne({ codigo_pedido: "${codigo_pedido}" }, { $set: { estado: "${nuevo_estado}"${nuevo_estado === 'En Camino' ? ', pin_seguridad: "****"' : ''} } })`,
+            pedido: ocultarPin(pedido, req.usuario)
+        });
+    } catch (e) {
+        falla(res, e, 'Error al actualizar el pedido');
+    }
+};
+
+// GET /api/mongo/repartidores
 exports.obtenerRepartidores = async (req, res) => {
     if (!verificarConexion(res)) return;
     try {
-        const repartidores = await Repartidor.find({ activo: true });
+        const repartidores = await Repartidor.find({ activo: true }, 'nombre vehiculo telefono estado calificacion');
         res.status(200).json({
             exito: true,
             total: repartidores.length,
             operacion: 'find({ activo: true })',
-            consultaMQL: 'Repartidor.find({ activo: true })',
+            consultaMQL: 'Repartidor.find({ activo: true }, "nombre vehiculo telefono estado calificacion")',
             datos: repartidores
         });
-    } catch (error) {
-        res.status(500).json({ exito: false, mensaje: 'Error al obtener repartidores', detalle: error.message });
+    } catch (e) {
+        falla(res, e, 'Error al obtener los repartidores');
     }
 };
 
-// 16. Actualizar Datos de "Mi Local" (Restaurante)
+// PUT /api/mongo/restaurantes/mi-local
 exports.actualizarMiLocal = async (req, res) => {
     if (!verificarConexion(res)) return;
     try {
-        const { restaurante_id, nombre, direccion, telefono, especialidad } = req.body;
-        if (!restaurante_id) {
-            return res.status(400).json({ exito: false, mensaje: 'El ID de restaurante es obligatorio' });
-        }
+        const { nombre, direccion, telefono, especialidad } = req.body || {};
+        const rest = await Restaurante.findById(req.usuario.id);
+        if (!rest) return error(res, 404, 'RESTAURANTE_NO_ENCONTRADO', 'No encontramos tu local.');
 
-        const rest = await Restaurante.findById(restaurante_id);
-        if (!rest) {
-            return res.status(404).json({ exito: false, mensaje: 'Restaurante no encontrado' });
-        }
-
-        if (nombre) rest.nombre = nombre.trim();
-        if (direccion) rest.direccion = direccion.trim();
-        if (telefono) rest.telefono = telefono.trim();
-        if (especialidad) rest.especialidad = especialidad.trim();
-
+        if (nombre) rest.nombre = String(nombre).trim();
+        if (direccion) rest.direccion = String(direccion).trim();
+        if (telefono) rest.telefono = String(telefono).trim();
+        if (especialidad) rest.especialidad = String(especialidad).trim();
         await rest.save();
 
         res.status(200).json({
             exito: true,
-            mensaje: `¡Datos de "${rest.nombre}" actualizados exitosamente!`,
+            mensaje: `¡Datos de "${rest.nombre}" actualizados!`,
             restaurante: rest
         });
-    } catch (error) {
-        res.status(500).json({ exito: false, mensaje: 'Error al actualizar local', detalle: error.message });
+    } catch (e) {
+        falla(res, e, 'Error al actualizar el local');
+    }
+};
+
+// ─────────────────────────────────────────────────────────────────────
+// REPARTIDOR
+// ─────────────────────────────────────────────────────────────────────
+
+// PUT /api/mongo/pedidos/aceptar  { codigo_pedido }
+exports.aceptarPedido = async (req, res) => {
+    if (!verificarConexion(res)) return;
+    const { codigo_pedido } = req.body || {};
+    if (!codigo_pedido) return error(res, 400, 'DATOS_FALTANTES', 'Indica el código del pedido.');
+    try {
+        const pedido = await Pedido.findOne({ codigo_pedido });
+        if (!pedido) return error(res, 404, 'PEDIDO_NO_ENCONTRADO', `El pedido ${codigo_pedido} no existe.`);
+        if (pedido.repartidor_id && String(pedido.repartidor_id) !== String(req.usuario.id)) {
+            return error(res, 409, 'PEDIDO_TOMADO', 'Otro repartidor ya tomó este pedido.');
+        }
+        if (!['En Preparación', 'En Camino'].includes(pedido.estado)) {
+            return error(res, 409, 'CAMBIO_NO_PERMITIDO', `No se puede aceptar un pedido "${pedido.estado}".`);
+        }
+
+        pedido.repartidor_id = req.usuario.id;
+        if (pedido.estado !== 'En Camino' || !pedido.pin_seguridad) {
+            pedido.estado = 'En Camino';
+            pedido.pin_seguridad = pinAleatorio(); // el PIN se crea cuando el pedido sale
+            pedido.pin_generado_en = new Date();
+            pedido.intentos_pin = 0;
+        }
+        await pedido.save();
+
+        res.status(200).json({
+            exito: true,
+            mensaje: `Aceptaste el pedido ${codigo_pedido}. Ya va en camino.`,
+            operacion: 'updateOne() con $set',
+            consultaMQL: `Pedido.updateOne({ codigo_pedido: "${codigo_pedido}" }, { $set: { estado: "En Camino", repartidor_id: ... } })`,
+            pedido: ocultarPin(pedido, req.usuario)
+        });
+    } catch (e) {
+        falla(res, e, 'Error al aceptar el pedido');
+    }
+};
+
+// POST /api/mongo/pedidos/validar-pin  { codigo_pedido, pin_ingresado }
+exports.validarPinEntrega = async (req, res) => {
+    if (!verificarConexion(res)) return;
+    const { codigo_pedido, pin_ingresado } = req.body || {};
+    if (!codigo_pedido || !pin_ingresado) {
+        return error(res, 400, 'DATOS_FALTANTES', 'Indica el código del pedido y el PIN de 4 dígitos.');
+    }
+    if (!/^\d{4}$/.test(String(pin_ingresado).trim())) {
+        return error(res, 422, 'PIN_FORMATO', 'El PIN debe tener exactamente 4 dígitos.');
+    }
+    try {
+        const pedido = await Pedido.findOne({ codigo_pedido });
+        if (!pedido) return error(res, 404, 'PEDIDO_NO_ENCONTRADO', `El pedido ${codigo_pedido} no existe.`);
+        if (pedido.repartidor_id && String(pedido.repartidor_id) !== String(req.usuario.id)) {
+            return error(res, 403, 'SIN_PERMISO', 'Este pedido está asignado a otro repartidor.');
+        }
+        if (pedido.estado === 'Entregado') return error(res, 409, 'YA_ENTREGADO', 'Este pedido ya fue entregado.');
+        if (pedido.estado !== 'En Camino' || !pedido.pin_seguridad) {
+            return error(res, 409, 'PEDIDO_NO_DESPACHADO', 'El pedido todavía no sale del local.');
+        }
+        if (pedido.intentos_pin >= MAX_INTENTOS_PIN) {
+            return error(res, 423, 'PIN_BLOQUEADO', 'Se superaron los 5 intentos. El restaurante debe revisar el pedido.');
+        }
+
+        if (pedido.pin_seguridad !== String(pin_ingresado).trim()) {
+            pedido.intentos_pin += 1;
+            await pedido.save();
+            const quedan = MAX_INTENTOS_PIN - pedido.intentos_pin;
+            return error(res, 401, 'PIN_INCORRECTO', `PIN de entrega incorrecto. Te quedan ${quedan} intento(s).`);
+        }
+
+        pedido.estado = 'Entregado';
+        pedido.repartidor_id = pedido.repartidor_id || req.usuario.id;
+        await pedido.save();
+
+        res.status(200).json({
+            exito: true,
+            mensaje: '¡Entrega confirmada! El PIN es correcto.',
+            operacion: 'updateOne() con $set',
+            consultaMQL: `Pedido.updateOne({ codigo_pedido: "${codigo_pedido}" }, { $set: { estado: "Entregado" } })`,
+            pedido: ocultarPin(pedido, req.usuario)
+        });
+    } catch (e) {
+        falla(res, e, 'Error al validar el PIN');
     }
 };
