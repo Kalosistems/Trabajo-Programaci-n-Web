@@ -5,6 +5,29 @@
  * ==========================================================================
  */
 
+// ==========================================================================
+// SESIÓN (JWT): el token que entrega /api/login o /api/registro se guarda en
+// memoria y se envía en cada llamada a la API con "Authorization: Bearer <token>".
+// ==========================================================================
+let tokenSesion = null;
+const fetchOriginal = window.fetch.bind(window);
+window.fetch = async (url, opciones = {}) => {
+    const esApi = typeof url === 'string' && url.startsWith('/api/');
+    if (esApi && tokenSesion) {
+        opciones = { ...opciones, headers: { ...(opciones.headers || {}), Authorization: `Bearer ${tokenSesion}` } };
+    }
+    const res = await fetchOriginal(url, opciones);
+    if (esApi && (url === '/api/login' || url === '/api/registro') && res.ok) {
+        try { const d = await res.clone().json(); if (d.token) tokenSesion = d.token; } catch (e) {}
+    }
+    if (esApi && res.status === 401 && tokenSesion && !['/api/login', '/api/mongo/pedidos/validar-pin'].includes(url)) {
+        // Token vencido o inválido: se avisa y se vuelve al inicio de sesión
+        tokenSesion = null;
+        setTimeout(() => { mostrarToast('Tu sesión venció. Inicia sesión de nuevo.', 'error'); mostrarPantallaOnboarding('login'); }, 0);
+    }
+    return res;
+};
+
 // ESTADO GLOBAL DE LA APLICACIÓN
 let usuarioActual = {
     id: "6620f1a4e13b8a1c90000001",
@@ -339,6 +362,7 @@ async function procesarLogin(e) {
 
 function cerrarSesion() {
     usuarioActual = null;
+    tokenSesion = null;
     mostrarPantallaOnboarding('bienvenida');
     mostrarToast('Sesión cerrada correctamente', 'success');
 }
@@ -397,10 +421,7 @@ async function guardarDatosMiLocal() {
         const res = await fetch('/api/mongo/restaurantes/mi-local', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                restaurante_id: usuarioActual.id,
-                nombre, direccion, telefono, especialidad
-            })
+            body: JSON.stringify({ nombre, direccion, telefono, especialidad })
         });
         const data = await res.json();
         if (data.exito) {
@@ -436,52 +457,37 @@ function iniciarSesionRepartidor(usuario) {
     mostrarToast(`Sesión activa: ${usuario.nombre} (Repartidor)`, 'success');
 }
 
-// Accesos Demo rápidos
-function activarDemoCliente() {
-    usuarioActual = {
-        id: "6620f1a4e13b8a1c90000001",
-        nombre: "Andrea Gómez",
-        correo: "andrea@mail.com",
-        rol: "cliente",
-        perfil_biometrico: {
-            peso_kg: 68.5,
-            altura_m: 1.65,
-            edad: 28,
-            genero: "Femenino",
-            imc: 25.2,
-            meta_calorica_diaria: 1800,
-            objetivo_salud: "Nutrición balanceada"
+// Accesos Demo rápidos: inician sesión DE VERDAD (POST /api/login) con las cuentas de prueba
+// que crea "npm run seed" (contraseña Kalo1234), para obtener un token válido.
+async function loginDemo(correo) {
+    try {
+        const res = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ correo, password: 'Kalo1234' })
+        });
+        const data = await res.json();
+        if (!data.exito) {
+            mostrarToast(data.mensaje || 'No se pudo iniciar la sesión de prueba (¿ejecutaste npm run seed?)', 'error');
+            return;
         }
-    };
-    iniciarExploracionComprador();
-    mostrarToast('Sesión activa: Andrea Gómez (Cliente)', 'success');
+        usuarioActual = data.usuario;
+        if (usuarioActual.rol === 'cliente') {
+            iniciarExploracionComprador();
+            mostrarToast(`Sesión activa: ${usuarioActual.nombre} (Cliente)`, 'success');
+        } else if (usuarioActual.rol === 'restaurante') {
+            iniciarSesionRestaurante(usuarioActual);
+        } else {
+            iniciarSesionRepartidor(usuarioActual);
+        }
+    } catch (e) {
+        mostrarToast('Error de conexión con el servidor', 'error');
+    }
 }
 
-function activarDemoRestaurante() {
-    iniciarSesionRestaurante({
-        id: "6620f1a4e13b8a1c90000010",
-        nombre: "Verde Vivo",
-        correo: "contacto@verdevivo.cl",
-        rol: "restaurante",
-        especialidad: "Comida saludable y bowls funcionales",
-        direccion: "Av. Providencia 1240, Providencia, Santiago",
-        telefono: "+569 8765 4321",
-        calificacion_promedio: 4.9
-    });
-}
-
-function activarDemoRepartidor() {
-    iniciarSesionRepartidor({
-        id: "6620f1a4e13b8a1c90000020",
-        nombre: "Carlos Repartidor",
-        correo: "carlos.reparto@kalo.cl",
-        rol: "repartidor",
-        telefono: "+569 6611 2233",
-        vehiculo: "Motocicleta",
-        estado: "Disponible",
-        calificacion: 5.0
-    });
-}
+function activarDemoCliente() { return loginDemo('andrea@mail.com'); }
+function activarDemoRestaurante() { return loginDemo('contacto@greenbowl.cl'); }
+function activarDemoRepartidor() { return loginDemo('carlos.reparto@kalo.cl'); }
 
 // Iniciar aplicación móvil del comprador
 function iniciarExploracionComprador() {
@@ -902,11 +908,9 @@ async function procesarPagoCarrito() {
         const res = await fetch('/api/mongo/pedidos', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            // El cliente sale del token y el total lo calcula el servidor con los precios guardados
             body: JSON.stringify({
-                usuario_id: usuarioActual.id,
-                items: carrito,
-                restaurante_id: restIdDetectado,
-                total
+                items: carrito.map(it => ({ platillo_id: it.platillo_id, cantidad: it.cantidad }))
             })
         });
 
@@ -1034,7 +1038,7 @@ function renderizarVistaSeguimientoPedido(pedido) {
         
         // CAJA DESTACADA DEL PIN DE 4 DÍGITOS (MOCKUP 3.2)
         boxPin.classList.remove('hidden');
-        document.getElementById('trackPinNumero').textContent = pedido.pin_seguridad || '0492';
+        document.getElementById('trackPinNumero').textContent = pedido.pin_seguridad || '----';
     } else if (pedido.estado === 'Entregado') {
         [stepNode1, stepNode2, stepNode3, stepNode4].forEach(n => n.classList.add('active'));
         [stepLine1, stepLine2, stepLine3].forEach(l => l.classList.add('active'));
@@ -1090,10 +1094,11 @@ async function enviarEvaluacionTransparencia() {
         if (data.exito) {
             document.getElementById('formEvaluacionBody').classList.add('hidden');
             document.getElementById('boxEvaluacionConfirmada').classList.remove('hidden');
+        } else {
+            mostrarToast(data.mensaje || 'No se pudo guardar la evaluación', 'error');
         }
     } catch (e) {
-        document.getElementById('formEvaluacionBody').classList.add('hidden');
-        document.getElementById('boxEvaluacionConfirmada').classList.remove('hidden');
+        mostrarToast('Error de conexión al enviar la evaluación', 'error');
     }
 }
 
@@ -1134,10 +1139,7 @@ async function guardarEdicionBiometrica() {
         const res = await fetch('/api/mongo/usuarios/biometrico', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                usuario_id: usuarioActual.id,
-                peso, altura, edad, genero
-            })
+            body: JSON.stringify({ peso, altura, edad, genero })
         });
 
         const data = await res.json();
@@ -1189,11 +1191,19 @@ function cerrarModalEliminarDatos() {
 
 async function confirmarEliminarDatos() {
     try {
-        await fetch(`/api/mongo/usuarios/${usuarioActual.id}`, { method: 'DELETE' });
-    } catch (e) {}
+        const res = await fetch(`/api/mongo/usuarios/${usuarioActual.id}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (!data.exito) {
+            mostrarToast(data.mensaje || 'No se pudieron eliminar tus datos', 'error');
+            return;
+        }
+    } catch (e) {
+        mostrarToast('Error de conexión al eliminar tus datos', 'error');
+        return;
+    }
     cerrarModalEliminarDatos();
     cerrarSesion();
-    mostrarToast('Tus datos han sido eliminados según Ley 21.713', 'info');
+    mostrarToast('Tus datos fueron eliminados (Ley 21.719)', 'info');
 }
 
 // ==========================================================================
@@ -1227,9 +1237,7 @@ function cambiarTabRestaurante(tabId) {
 // Tablero Kanban de 4 columnas (Exclusivo por restaurante)
 async function cargarTableroKanban() {
     try {
-        const url = (usuarioActual && usuarioActual.rol === 'restaurante')
-            ? `/api/mongo/pedidos?restaurante_id=${usuarioActual.id}`
-            : '/api/mongo/pedidos';
+        const url = '/api/mongo/pedidos'; // el servidor filtra por el restaurante del token
         const res = await fetch(url);
         const data = await res.json();
         if (data.exito && data.datos) {
@@ -1347,6 +1355,8 @@ async function avanzarEstadoKanban(codigo, nuevoEstado) {
         if (data.exito) {
             mostrarToast(`Pedido ${codigo} actualizado a ${nuevoEstado}`, 'success');
             cargarTableroKanban();
+        } else {
+            mostrarToast(data.mensaje || 'No se pudo actualizar el pedido', 'error');
         }
     } catch (e) {
         mostrarToast('Error al actualizar pedido', 'error');
@@ -1560,8 +1570,7 @@ async function guardarNuevoPlatilloRestaurante(e) {
                 proteinas: parseInt(document.getElementById('prevProtTotal').textContent),
                 carbos: parseInt(document.getElementById('prevCarbTotal').textContent),
                 grasas: parseInt(document.getElementById('prevGrasaTotal').textContent),
-                ingredientes,
-                restaurante_id: usuarioActual?.id
+                ingredientes
             })
         });
 
@@ -1570,6 +1579,8 @@ async function guardarNuevoPlatilloRestaurante(e) {
             mostrarToast(`✅ ${data.mensaje}`, 'success');
             cargarPlatillosDesdeServidor();
             cambiarTabRestaurante('platillos');
+        } else {
+            mostrarToast(data.mensaje || 'No se pudo guardar el platillo', 'error');
         }
     } catch (err) {
         mostrarToast('Error al guardar platillo', 'error');
@@ -1684,19 +1695,14 @@ async function repartidorAceptarPedido() {
         const res = await fetch('/api/mongo/pedidos/aceptar', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                codigo_pedido: cod,
-                repartidor_id: usuarioActual ? usuarioActual.id : undefined
-            })
+            body: JSON.stringify({ codigo_pedido: cod })
         });
         const data = await res.json();
         if (data.exito) {
             mostrarToast(`¡Has aceptado el pedido ${cod}! En camino hacia el cliente.`, 'success');
             await cargarPedidoRepartidor();
         } else {
-            await avanzarEstadoKanban(cod, 'En Camino');
-            mostrarToast('Has aceptado el reparto. Ya estás en camino.', 'success');
-            await cargarPedidoRepartidor();
+            mostrarToast(data.mensaje || 'No se pudo aceptar el pedido', 'error');
         }
     } catch (e) {
         await avanzarEstadoKanban(cod, 'En Camino');
@@ -1816,7 +1822,7 @@ async function ejecutarConsultaMQL(url, metodo) {
         const data = await res.json();
 
         tagOperacion.textContent = `Operación: ${data.operacion || 'Consulta NoSQL'}`;
-        tagStatus.textContent = `Estado: HTTP ${res.status} OK`;
+        tagStatus.textContent = `Estado: HTTP ${res.status} ${res.ok ? 'OK' : 'Error'}`;
         queryDisplay.textContent = data.consultaMQL || '// Consulta estándar';
         jsonDisplay.textContent = JSON.stringify(data, null, 2);
     } catch (e) {

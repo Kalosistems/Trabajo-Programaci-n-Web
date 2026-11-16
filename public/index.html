@@ -23,7 +23,7 @@
         </div>
         <div class="demo-actions">
             <button class="btn-demo" onclick="activarDemoCliente()">👤 Cliente (Andrea)</button>
-            <button class="btn-demo" onclick="activarDemoRestaurante()">🏪 Restaurante (Verde Vivo)</button>
+            <button class="btn-demo" onclick="activarDemoRestaurante()">🏪 Restaurante (Green Bowl)</button>
             <button class="btn-demo" onclick="activarDemoRepartidor()">🛵 Repartidor (Carlos)</button>
             <button class="btn-demo btn-demo-mql" onclick="abrirModalNoSQL()">🍃 Consola NoSQL (Docente)</button>
             <button class="btn-demo btn-demo-reset" onclick="mostrarPantallaOnboarding('bienvenida')">↺ Reiniciar Flujo</button>
@@ -251,7 +251,7 @@
 
                             <div class="privacy-note-card">
                                 <span class="privacy-icon">🛡️</span>
-                                <small>Usamos estos datos para calcular tu IMC y tu meta calórica. Están protegidos según la Ley 21.713.</small>
+                                <small>Usamos estos datos para calcular tu IMC y tu meta calórica. Están protegidos según la Ley 21.719.</small>
                             </div>
 
                             <button type="submit" class="btn btn-primary btn-block mt-3">Crear cuenta</button>
@@ -1497,7 +1497,7 @@
                 <button class="btn-close-sheet" onclick="cerrarModalNoSQL()">✕</button>
             </div>
             <div class="sheet-content-padding">
-                <p class="text-subtle text-xs">Ejecuta en vivo los 4 requerimientos de la rúbrica NoSQL sobre la base de datos en la nube:</p>
+                <p class="text-subtle text-xs">Ejecuta en vivo las consultas NoSQL (operadores, JOIN y GROUP BY) sobre la base de datos en la nube:</p>
 
                 <div class="nosql-actions-grid mt-2">
                     <button class="btn-mql btn-mql-lookup" onclick="ejecutarConsultaMQL('/api/mongo/platillos-con-restaurante', 'GET')">
@@ -1510,7 +1510,13 @@
                         3. Operador $lte (Filtro Calórico ≤ 500 kcal)
                     </button>
                     <button class="btn-mql btn-mql-find" onclick="ejecutarConsultaMQL('/api/mongo/pedidos', 'GET')">
-                        4. find() Pedidos Activos (con PIN)
+                        4. find() Mis pedidos (según el rol de la sesión)
+                    </button>
+                    <button class="btn-mql btn-mql-lookup" onclick="ejecutarConsultaMQL('/api/mongo/usuarios-pedidos', 'GET')">
+                        5. $lookup + $size (LEFT JOIN) Clientes con o sin pedidos
+                    </button>
+                    <button class="btn-mql btn-mql-filter" onclick="ejecutarConsultaMQL('/api/mongo/planes?precioMin=20', 'GET')">
+                        6. Operador $gt + sort() Planes sobre USD 20
                     </button>
                 </div>
 
