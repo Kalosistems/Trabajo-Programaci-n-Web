@@ -1,0 +1,107 @@
+/* Tema de Kalo sobre Bootstrap 5: se cambian las variables de Bootstrap por la paleta de la marca */
+:root {
+  --kalo-verde: #1B5E3A;
+  --kalo-verde-2: #2E7D5B;
+  --kalo-verde-claro: #E8F5E9;
+  --kalo-naranjo: #F59E0B;
+  --kalo-rojo: #E53935;
+  --bs-primary: #1B5E3A;
+  --bs-primary-rgb: 27, 94, 58;
+  --bs-success: #2E7D5B;
+  --bs-success-rgb: 46, 125, 91;
+  --bs-warning: #F59E0B;
+  --bs-warning-rgb: 245, 158, 11;
+  --bs-danger: #E53935;
+  --bs-danger-rgb: 229, 57, 53;
+  --bs-body-font-family: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --bs-body-bg: #F6F8F7;
+  --bs-body-color: #1F2D3D;
+  --bs-border-radius: .65rem;
+  --bs-border-radius-lg: 1rem;
+  --bs-link-color: #1B5E3A;
+  --bs-link-color-rgb: 27, 94, 58;
+  --bs-link-hover-color: #134229;
+  --bs-focus-ring-color: rgba(27, 94, 58, .3);
+}
+
+.btn-primary {
+  --bs-btn-bg: var(--kalo-verde); --bs-btn-border-color: var(--kalo-verde);
+  --bs-btn-hover-bg: #164D30; --bs-btn-hover-border-color: #164D30;
+  --bs-btn-active-bg: #134229; --bs-btn-active-border-color: #134229;
+  --bs-btn-disabled-bg: var(--kalo-verde); --bs-btn-disabled-border-color: var(--kalo-verde);
+  font-weight: 600;
+}
+.btn-outline-primary {
+  --bs-btn-color: var(--kalo-verde); --bs-btn-border-color: var(--kalo-verde);
+  --bs-btn-hover-bg: var(--kalo-verde); --bs-btn-hover-border-color: var(--kalo-verde);
+  --bs-btn-active-bg: var(--kalo-verde); --bs-btn-active-border-color: var(--kalo-verde);
+  font-weight: 600;
+}
+.btn-warning { --bs-btn-color: #1F2D3D; --bs-btn-hover-color: #1F2D3D; font-weight: 600; }
+.form-control:focus, .form-select:focus, .form-check-input:focus { border-color: var(--kalo-verde-2); box-shadow: 0 0 0 .2rem rgba(27, 94, 58, .2); }
+.form-check-input:checked { background-color: var(--kalo-verde); border-color: var(--kalo-verde); }
+.nav-pills { --bs-nav-pills-link-active-bg: var(--kalo-verde); }
+.nav-link { color: var(--kalo-verde); }
+.progress { --bs-progress-bar-bg: var(--kalo-verde-2); }
+.bg-verde-claro { background: var(--kalo-verde-claro) !important; }
+.text-verde { color: var(--kalo-verde) !important; }
+.fw-800 { font-weight: 800; }
+
+/* Marca */
+.logo { font-weight: 800; letter-spacing: -.5px; color: var(--kalo-verde); text-decoration: none; font-size: 1.6rem; }
+.logo::after { content: '.'; color: var(--kalo-naranjo); }
+.logo-blanco { color: #fff; }
+
+/* Tarjetas */
+.card { border: 1px solid #E5ECE8; box-shadow: 0 1px 2px rgba(16, 24, 40, .04); }
+.card-hover { transition: transform .15s ease, box-shadow .15s ease; }
+.card-hover:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(16, 24, 40, .08); }
+.img-platillo { aspect-ratio: 16 / 10; object-fit: cover; background: var(--kalo-verde-claro); }
+
+/* Portada */
+.portada { background: linear-gradient(135deg, #1B5E3A 0%, #2E7D5B 60%, #3E8E66 100%); color: #fff; }
+.portada .lead { opacity: .92; }
+
+/* Barra inferior del cliente en celular */
+.barra-inferior { box-shadow: 0 -2px 12px rgba(0, 0, 0, .06); }
+.barra-inferior .nav-link { color: #6B7280; font-size: .75rem; padding: .4rem 0; }
+.barra-inferior .nav-link.active { color: var(--kalo-verde); font-weight: 700; }
+.barra-inferior .nav-link i { font-size: 1.3rem; display: block; }
+@media (max-width: 767.98px) { .con-barra-inferior { padding-bottom: 84px; } }
+
+/* Menú lateral del restaurante */
+.lateral { width: 250px; min-height: 100vh; }
+.lateral .nav-link { color: #D1E7DB; border-radius: .5rem; padding: .6rem .8rem; }
+.lateral .nav-link:hover { background: rgba(255, 255, 255, .08); color: #fff; }
+.lateral .nav-link.active { background: #fff; color: var(--kalo-verde); font-weight: 700; }
+
+/* Pasos del seguimiento */
+.pasos { display: flex; justify-content: space-between; position: relative; }
+.pasos::before { content: ''; position: absolute; top: 18px; left: 10%; right: 10%; height: 3px; background: #E5E7EB; }
+.pasos .paso { position: relative; text-align: center; flex: 1; font-size: .75rem; color: #6B7280; }
+.pasos .circulo { width: 38px; height: 38px; border-radius: 50%; background: #E5E7EB; color: #6B7280; display: grid; place-items: center; margin: 0 auto .3rem; font-weight: 700; position: relative; }
+.pasos .paso.hecho .circulo { background: var(--kalo-verde); color: #fff; }
+.pasos .paso.hecho { color: var(--kalo-verde); font-weight: 600; }
+
+/* PIN */
+.pin-grande { font-size: 2.6rem; letter-spacing: .6rem; font-weight: 800; color: #92400E; }
+.caja-pin { background: #FFFBEB; border: 2px solid #FCD34D; }
+.teclado { display: grid; grid-template-columns: repeat(3, 1fr); gap: .6rem; }
+.teclado .btn { font-size: 1.5rem; font-weight: 700; padding: .85rem 0; }
+.digitos { display: flex; gap: .6rem; justify-content: center; }
+.digitos span { width: 54px; height: 64px; border: 2px solid #D1D5DB; border-radius: .7rem; display: grid; place-items: center; font-size: 1.8rem; font-weight: 800; background: #fff; }
+.digitos span.lleno { border-color: var(--kalo-verde); }
+.digitos.error span { border-color: var(--kalo-rojo); }
+
+/* Kanban del restaurante */
+.columna-kanban { background: #EEF2F0; border-radius: 1rem; min-height: 320px; }
+
+/* Consola NoSQL */
+.consola pre { background: #0F172A; color: #E2E8F0; border-radius: .7rem; padding: 1rem; max-height: 420px; overflow: auto; font-size: .8rem; white-space: pre-wrap; word-break: break-word; }
+
+/* Toasts sobre todo */
+.aviso-contenedor { position: fixed; z-index: 2000; }
+
+/* Accesibilidad: foco visible */
+a:focus-visible, button:focus-visible { outline: 3px solid var(--kalo-naranjo); outline-offset: 2px; }
+.visually-hidden-focusable:focus { position: fixed; top: .5rem; left: .5rem; z-index: 3000; }
