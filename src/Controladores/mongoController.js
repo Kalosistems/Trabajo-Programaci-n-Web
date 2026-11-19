@@ -13,6 +13,7 @@ const Repartidor = require('../Modelos/mongo/Repartidor');
 const Platillo = require('../Modelos/mongo/Platillo');
 const Pedido = require('../Modelos/mongo/Pedido');
 const { mongoose } = require('../config/mongo');
+const { normalizarTelefono, telefonoValido, MENSAJE_TELEFONO } = require('../utils/telefono');
 
 const COSTO_ENVIO = 1490;
 const MAX_INTENTOS_PIN = 5;
@@ -434,6 +435,9 @@ exports.actualizarPerfilBiometrico = async (req, res) => {
         if (!(pesoKg >= 20 && pesoKg <= 350) || !(alturaM >= 1 && alturaM <= 2.5)) {
             return error(res, 422, 'BIOMETRIA_INVALIDA', 'El peso debe estar entre 20 y 350 kg y la altura entre 1,00 y 2,50 m.');
         }
+        if (telefono !== undefined && !telefonoValido(telefono)) {
+            return error(res, 422, 'TELEFONO_INVALIDO', MENSAJE_TELEFONO);
+        }
         pb.peso_kg = pesoKg;
         pb.altura_m = alturaM;
         if (edad !== undefined) pb.edad = parseInt(edad, 10);
@@ -444,7 +448,7 @@ exports.actualizarPerfilBiometrico = async (req, res) => {
         // con una sola instrucción, la copia (referencia extendida) que guardan sus pedidos.
         const copia = {};
         if (nombre && nombre.trim()) { usuario.nombre = nombre.trim(); copia['cliente.nombre'] = usuario.nombre; }
-        if (telefono && telefono.trim()) { usuario.telefono = telefono.trim(); copia['cliente.telefono'] = usuario.telefono; }
+        if (telefono !== undefined) { usuario.telefono = normalizarTelefono(telefono); copia['cliente.telefono'] = usuario.telefono; }
 
         await usuario.save();
         let pedidosActualizados = 0;
@@ -617,12 +621,15 @@ exports.actualizarMiLocal = async (req, res) => {
     if (!verificarConexion(res)) return;
     try {
         const { nombre, direccion, telefono, especialidad } = req.body || {};
+        if (telefono !== undefined && !telefonoValido(telefono)) {
+            return error(res, 422, 'TELEFONO_INVALIDO', MENSAJE_TELEFONO);
+        }
         const rest = await Restaurante.findById(req.usuario.id);
         if (!rest) return error(res, 404, 'RESTAURANTE_NO_ENCONTRADO', 'No encontramos tu local.');
 
         if (nombre) rest.nombre = String(nombre).trim();
         if (direccion) rest.direccion = String(direccion).trim();
-        if (telefono) rest.telefono = String(telefono).trim();
+        if (telefono !== undefined) rest.telefono = normalizarTelefono(telefono);
         if (especialidad) rest.especialidad = String(especialidad).trim();
         await rest.save();
 

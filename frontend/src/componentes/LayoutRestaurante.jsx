@@ -8,8 +8,7 @@ const ENLACES = [
   { a: '/local/platillos', icono: 'egg-fried', texto: 'Mis platillos' },
   { a: '/local/platillos/nuevo', icono: 'plus-circle', texto: 'Crear platillo' },
   { a: '/local/mi-local', icono: 'shop', texto: 'Mi local' },
-  { a: '/local/resumen', icono: 'graph-up-arrow', texto: 'Resumen y evaluaciones' },
-  { a: '/consultas', icono: 'terminal', texto: 'Consola NoSQL' }
+  { a: '/local/resumen', icono: 'graph-up-arrow', texto: 'Resumen y evaluaciones' }
 ];
 
 function Menu({ alElegir }) {

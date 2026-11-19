@@ -10,7 +10,6 @@ import Entrar from './paginas/Entrar';
 
 // Code splitting: cada grupo de pantallas se descarga solo cuando se necesita
 const Registro = lazy(() => import('./paginas/Registro'));
-const Consultas = lazy(() => import('./paginas/Consultas'));
 const NoEncontrado = lazy(() => import('./paginas/NoEncontrado'));
 const Explorar = lazy(() => import('./paginas/cliente/Explorar'));
 const Carrito = lazy(() => import('./paginas/cliente/Carrito'));
@@ -41,7 +40,6 @@ export default function App() {
           <Route path="/" element={<Bienvenida />} />
           <Route path="/entrar" element={<Entrar />} />
           <Route path="/registro" element={<Registro />} />
-          <Route path="/consultas" element={<Consultas />} />
 
           <Route element={<SoloRol rol="cliente"><LayoutCliente /></SoloRol>}>
             <Route path="/explorar" element={<Explorar />} />

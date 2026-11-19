@@ -10,6 +10,7 @@ const Restaurante = require('../Modelos/mongo/Restaurante');
 const Repartidor = require('../Modelos/mongo/Repartidor');
 const { mongoose } = require('../config/mongo');
 const { firmarToken, EXPIRA } = require('../middleware/auth');
+const { normalizarTelefono, telefonoValido, MENSAJE_TELEFONO } = require('../utils/telefono');
 
 const COSTO_BCRYPT = 10;
 const CORREO_VALIDO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -109,6 +110,13 @@ exports.registro = async (req, res) => {
         if (!CLAVE_VALIDA.test(String(password))) {
             return error(res, 422, 'CLAVE_DEBIL', 'La contraseña debe tener al menos 8 caracteres, una mayúscula y un número.');
         }
+        if (rol === 'repartidor' && !telefono) {
+            return error(res, 400, 'DATOS_FALTANTES', 'Ingresa un teléfono de contacto.');
+        }
+        if (telefono && !telefonoValido(telefono)) {
+            return error(res, 422, 'TELEFONO_INVALIDO', MENSAJE_TELEFONO);
+        }
+        const telefonoNormalizado = telefono ? normalizarTelefono(telefono) : undefined;
 
         // El correo es único entre las tres colecciones (sirve para iniciar sesión)
         const [c, r, p] = await Promise.all([
@@ -130,19 +138,16 @@ exports.registro = async (req, res) => {
             const nuevo = await Restaurante.create({
                 nombre: nombre.trim(), correo: correoNormalizado, password_hash,
                 especialidad: especialidad.trim(), direccion: direccion.trim(),
-                telefono: telefono ? telefono.trim() : undefined,
+                telefono: telefonoNormalizado,
                 calificacion_promedio: 5.0
             });
             return respuestaSesion(res, 201, '¡Restaurante registrado!', datosPublicos(nuevo, 'restaurante'));
         }
 
         if (rol === 'repartidor') {
-            if (!telefono) {
-                return error(res, 400, 'DATOS_FALTANTES', 'Ingresa un teléfono de contacto.');
-            }
             const nuevo = await Repartidor.create({
                 nombre: nombre.trim(), correo: correoNormalizado, password_hash,
-                telefono: telefono.trim(), vehiculo: vehiculo || 'Motocicleta',
+                telefono: telefonoNormalizado, vehiculo: vehiculo || 'Motocicleta',
                 estado: 'Disponible', calificacion: 5.0
             });
             return respuestaSesion(res, 201, '¡Repartidor registrado!', datosPublicos(nuevo, 'repartidor'));
@@ -160,7 +165,7 @@ exports.registro = async (req, res) => {
 
         const nuevo = await Usuario.create({
             nombre: nombre.trim(), correo: correoNormalizado, password_hash,
-            telefono: telefono ? telefono.trim() : undefined,
+            telefono: telefonoNormalizado,
             perfil_biometrico: {
                 peso_kg: pesoKg, altura_m: alturaM, edad: edadN,
                 genero: ['Masculino', 'Femenino', 'Otro'].includes(genero) ? genero : 'Otro',

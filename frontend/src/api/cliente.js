@@ -83,15 +83,12 @@ export const api = {
 
   // Repartidor
   aceptar: (codigo_pedido) => pedir('PUT', '/mongo/pedidos/aceptar', { codigo_pedido }),
-  validarPin: (codigo_pedido, pin_ingresado) => pedir('POST', '/mongo/pedidos/validar-pin', { codigo_pedido, pin_ingresado }),
-
-  // Consola NoSQL: ejecuta cualquier consulta GET y devuelve también el status HTTP
-  consulta: async (ruta) => {
-    try { const r = await pedir('GET', ruta); return { status: 200, json: r }; } catch (e) {
-      return { status: e.status, json: { exito: false, codigo: e.codigo, mensaje: e.message } };
-    }
-  }
+  validarPin: (codigo_pedido, pin_ingresado) => pedir('POST', '/mongo/pedidos/validar-pin', { codigo_pedido, pin_ingresado })
 };
+
+// Teléfono: exactamente 11 dígitos (se permite "+" al inicio y espacios o guiones al escribir)
+export const telefonoValido = (t) => /^\+?\d{11}$/.test(String(t ?? '').replace(/[\s-]/g, ''));
+export const MENSAJE_TELEFONO = 'Número incompleto: debe tener 11 dígitos (ej. +569 1234 5678).';
 
 // Formatos chilenos
 export const clp = (n) => `$${Math.round(Number(n) || 0).toLocaleString('es-CL')}`;

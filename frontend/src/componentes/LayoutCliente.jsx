@@ -29,8 +29,6 @@ export default function LayoutCliente() {
               </Nav.Link>
             ))}
             <NavDropdown title={usuario?.nombre?.split(' ')[0] || 'Cuenta'} align="end">
-              <NavDropdown.Item as={NavLink} to="/consultas"><i className="bi bi-terminal me-2" />Consola NoSQL</NavDropdown.Item>
-              <NavDropdown.Divider />
               <NavDropdown.Item onClick={() => { salir(); navegar('/'); }}><i className="bi bi-box-arrow-right me-2" />Cerrar sesión</NavDropdown.Item>
             </NavDropdown>
           </Nav>

@@ -62,7 +62,6 @@ export default function Bienvenida() {
             </Col>
           ))}
         </Row>
-        <p className="text-center mt-4 small"><Link to="/consultas"><i className="bi bi-terminal me-1" />Consola de consultas NoSQL</Link></p>
       </Container>
     </main>
   );

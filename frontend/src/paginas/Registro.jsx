@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Alert, Button, ButtonGroup, Card, Col, Container, Form, ProgressBar, Row, Spinner, ToggleButton } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
-import { api, decimal } from '../api/cliente';
+import { api, decimal, telefonoValido, MENSAJE_TELEFONO } from '../api/cliente';
 import { useSesion, INICIO_POR_ROL } from '../contexto/Sesion';
 import { useAccion, useTitulo } from '../hooks';
 
@@ -40,10 +40,14 @@ export default function Registro() {
   const peso = parseFloat(String(d.peso).replace(',', '.'));
   const imc = peso > 0 && altura >= 1 && altura <= 2.5 ? peso / (altura * altura) : null;
   const alturaMala = d.altura !== '' && !(altura >= 1 && altura <= 2.5);
+  // Repartidor: teléfono obligatorio. Restaurante: opcional, pero si se escribe debe estar completo.
+  const telMalo = (d.rol === 'repartidor' || (d.rol === 'restaurante' && d.telefono.trim() !== '')) && !telefonoValido(d.telefono);
+  const telVisible = d.telefono.trim() !== '' && telMalo;
 
   const enviar = async (e) => {
     e.preventDefault();
     setError('');
+    if (telMalo) { setError(MENSAJE_TELEFONO); return; }
     try {
       const r = await ejecutar(() => api.registro({ ...d, peso, altura, edad: parseInt(d.edad, 10) }));
       const s = entrar(r);
@@ -123,12 +127,14 @@ export default function Registro() {
                 <>
                   <Form.Group className="mb-3" controlId="esp"><Form.Label>Especialidad</Form.Label><Form.Control value={d.especialidad} onChange={cambiar('especialidad')} placeholder="Bowls y ensaladas funcionales" /></Form.Group>
                   <Form.Group className="mb-3" controlId="dir"><Form.Label>Dirección</Form.Label><Form.Control value={d.direccion} onChange={cambiar('direccion')} autoComplete="street-address" /></Form.Group>
-                  <Form.Group className="mb-3" controlId="telR"><Form.Label>Teléfono</Form.Label><Form.Control type="tel" value={d.telefono} onChange={cambiar('telefono')} /></Form.Group>
+                  <Form.Group className="mb-3" controlId="telR"><Form.Label>Teléfono</Form.Label><Form.Control type="tel" value={d.telefono} onChange={cambiar('telefono')} placeholder="+569 1234 5678" maxLength={16} isInvalid={telVisible} />
+                    <Form.Control.Feedback type="invalid">{MENSAJE_TELEFONO}</Form.Control.Feedback></Form.Group>
                 </>
               )}
               {paso === 2 && d.rol === 'repartidor' && (
                 <>
-                  <Form.Group className="mb-3" controlId="telD"><Form.Label>Teléfono de contacto</Form.Label><Form.Control type="tel" value={d.telefono} onChange={cambiar('telefono')} placeholder="+569…" /></Form.Group>
+                  <Form.Group className="mb-3" controlId="telD"><Form.Label>Teléfono de contacto</Form.Label><Form.Control type="tel" value={d.telefono} onChange={cambiar('telefono')} placeholder="+569 1234 5678" maxLength={16} isInvalid={telVisible} />
+                    <Form.Control.Feedback type="invalid">{MENSAJE_TELEFONO}</Form.Control.Feedback></Form.Group>
                   <Form.Group className="mb-3" controlId="veh"><Form.Label>Vehículo</Form.Label>
                     <Form.Select value={d.vehiculo} onChange={cambiar('vehiculo')}><option>Bicicleta</option><option>Motocicleta</option><option>Automóvil</option></Form.Select></Form.Group>
                 </>
@@ -136,7 +142,7 @@ export default function Registro() {
               {paso === 2 && (
                 <div className="d-flex gap-2 mt-4">
                   <Button variant="outline-secondary" onClick={() => setPaso(1)}>Atrás</Button>
-                  <Button type="submit" className="flex-grow-1" disabled={enviando}>
+                  <Button type="submit" className="flex-grow-1" disabled={enviando || telMalo}>
                     {enviando ? <><Spinner size="sm" className="me-2" />Creando…</> : 'Crear mi cuenta'}
                   </Button>
                 </div>

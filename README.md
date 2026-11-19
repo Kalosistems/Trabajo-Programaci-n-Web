@@ -56,7 +56,7 @@ frontend/src/
 ├── api/cliente.js        → todas las llamadas a la API (token JWT y errores)
 ├── contexto/             → sesión, carrito y avisos (React Context)
 ├── componentes/          → layouts por rol (cliente, restaurante, repartidor) y piezas comunes
-└── paginas/              → pantallas: cliente/, restaurante/, repartidor/, consola NoSQL
+└── paginas/              → pantallas: cliente/, restaurante/, repartidor/
 ```
 
 Cuentas de prueba (contraseña `Kalo1234`): `andrea@mail.com` (cliente), `contacto@greenbowl.cl` (restaurante) y `carlos.reparto@kalo.cl` (repartidor).

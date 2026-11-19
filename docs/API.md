@@ -19,7 +19,7 @@ Todas las respuestas tienen el campo `exito`:
 { "exito": false, "codigo": "PIN_INCORRECTO", "mensaje": "PIN de entrega incorrecto. Te quedan 4 intento(s)." }
 ```
 
-Las consultas de lectura también devuelven `operacion` y `consultaMQL` (la consulta de MongoDB que se ejecutó). Esos campos los muestra la consola NoSQL del frontend.
+Las consultas de lectura también devuelven `operacion` y `consultaMQL` (la consulta de MongoDB que se ejecutó), útiles para revisar la API con Postman o Thunder Client.
 
 ## 2. Autenticación y autorización
 
@@ -69,7 +69,9 @@ Crea una cuenta y deja la sesión iniciada.
 | especialidad, direccion | string | restaurante | Datos del local. |
 | telefono, vehiculo | string | repartidor | `vehiculo`: Bicicleta, Motocicleta o Automóvil. |
 
-Respuestas: **201** igual que el login · **400** DATOS_FALTANTES · **409** CORREO_REGISTRADO · **422** CORREO_INVALIDO, CLAVE_DEBIL, BIOMETRIA_INVALIDA o ROL_INVALIDO · **429**.
+Respuestas: **201** igual que el login · **400** DATOS_FALTANTES · **409** CORREO_REGISTRADO · **422** CORREO_INVALIDO, CLAVE_DEBIL, BIOMETRIA_INVALIDA, TELEFONO_INVALIDO o ROL_INVALIDO · **429**.
+
+El `telefono` (obligatorio para repartidor, opcional para restaurante y cliente) debe tener exactamente 11 dígitos. Se permite un `+` al inicio y espacios o guiones (`+569 1234 5678`), y se guarda sin espacios ni guiones (`+56912345678`).
 
 ### 3.2 Catálogo
 
@@ -120,7 +122,7 @@ Respuestas: **200** · **400** · **404** si el pedido no es del cliente · **40
 
 #### `PUT /api/mongo/usuarios/biometrico` 🔐 (cliente)
 Cuerpo (todo opcional): `peso`, `altura`, `edad`, `genero`, `nombre`, `telefono`. Recalcula el IMC. Si cambian el nombre o el teléfono, también actualiza la copia guardada en los pedidos del cliente con `updateMany`.
-Respuestas: **200** `{ usuario, pedidos_actualizados }` · **404** · **422** BIOMETRIA_INVALIDA.
+Respuestas: **200** `{ usuario, pedidos_actualizados }` · **404** · **422** BIOMETRIA_INVALIDA o TELEFONO_INVALIDO (el teléfono debe tener 11 dígitos).
 
 #### `DELETE /api/mongo/usuarios/:usuario_id` 🔐 (cliente)
 Elimina la cuenta y sus pedidos (derecho de supresión de datos de salud, Ley 21.719). Solo se puede borrar la propia cuenta.
@@ -140,7 +142,7 @@ Respuestas: **200** · **400** · **404** PEDIDO_NO_ENCONTRADO o REPARTIDOR_NO_E
 Repartidores activos (nombre, vehículo, teléfono, estado y calificación) para elegir uno al despachar. **200**.
 
 #### `PUT /api/mongo/restaurantes/mi-local` 🔐 (restaurante)
-Cuerpo opcional: `nombre`, `direccion`, `telefono`, `especialidad`. **200** · **404**.
+Cuerpo opcional: `nombre`, `direccion`, `telefono`, `especialidad`. **200** · **404** · **422** TELEFONO_INVALIDO (el teléfono debe tener 11 dígitos).
 
 ### 3.6 Repartidor
 
@@ -162,7 +164,7 @@ Respuestas: **200** · **400** · **401** PIN_INCORRECTO (indica los intentos qu
 | 404 | No existe el recurso o la ruta | PEDIDO_NO_ENCONTRADO, PLATILLO_NO_ENCONTRADO, RUTA_NO_ENCONTRADA |
 | 409 | Choca con el estado actual | CORREO_REGISTRADO, CAMBIO_NO_PERMITIDO, PEDIDO_TOMADO, YA_ENTREGADO |
 | 413 | El cuerpo supera los 100 KB | CUERPO_DEMASIADO_GRANDE |
-| 422 | Los datos tienen el formato correcto, pero no cumplen las reglas del negocio | CLAVE_DEBIL, BIOMETRIA_INVALIDA, VARIOS_RESTAURANTES, NOTA_INVALIDA |
+| 422 | Los datos tienen el formato correcto, pero no cumplen las reglas del negocio | CLAVE_DEBIL, BIOMETRIA_INVALIDA, TELEFONO_INVALIDO, VARIOS_RESTAURANTES, NOTA_INVALIDA |
 | 423 | PIN bloqueado por intentos | PIN_BLOQUEADO |
 | 429 | Se superó un límite de solicitudes | DEMASIADAS_SOLICITUDES |
 | 500 | Error inesperado (el detalle queda en el registro del servidor, no se envía al cliente) | ERROR_INTERNO |

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Button, Card, Col, Form, Row, Spinner } from 'react-bootstrap';
-import { api } from '../../api/cliente';
+import { api, telefonoValido, MENSAJE_TELEFONO } from '../../api/cliente';
 import { useSesion } from '../../contexto/Sesion';
 import { useAvisos } from '../../contexto/Avisos';
 import { useAccion, useTitulo } from '../../hooks';
@@ -13,8 +13,11 @@ export default function MiLocal() {
   const [f, setF] = useState({ nombre: usuario?.nombre || '', especialidad: usuario?.especialidad || '', direccion: usuario?.direccion || '', telefono: usuario?.telefono || '' });
   const c = (k) => (e) => setF({ ...f, [k]: e.target.value });
 
+  const telMalo = !telefonoValido(f.telefono);
+
   const guardar = async (e) => {
     e.preventDefault();
+    if (telMalo) { avisar(MENSAJE_TELEFONO, 'error'); return; }
     try {
       const r = await ejecutar(() => api.actualizarLocal(f));
       const { nombre, especialidad, direccion, telefono } = r.restaurante;
@@ -34,9 +37,10 @@ export default function MiLocal() {
                 <Col md={6}><Form.Group controlId="lNombre"><Form.Label>Nombre del local</Form.Label><Form.Control value={f.nombre} onChange={c('nombre')} /></Form.Group></Col>
                 <Col md={6}><Form.Group controlId="lEsp"><Form.Label>Especialidad</Form.Label><Form.Control value={f.especialidad} onChange={c('especialidad')} /></Form.Group></Col>
                 <Col md={8}><Form.Group controlId="lDir"><Form.Label>Dirección</Form.Label><Form.Control value={f.direccion} onChange={c('direccion')} /></Form.Group></Col>
-                <Col md={4}><Form.Group controlId="lTel"><Form.Label>Teléfono</Form.Label><Form.Control value={f.telefono} onChange={c('telefono')} /></Form.Group></Col>
+                <Col md={4}><Form.Group controlId="lTel"><Form.Label>Teléfono</Form.Label><Form.Control type="tel" value={f.telefono} onChange={c('telefono')} placeholder="+569 1234 5678" maxLength={16} isInvalid={telMalo} />
+                  <Form.Control.Feedback type="invalid">{MENSAJE_TELEFONO}</Form.Control.Feedback></Form.Group></Col>
               </Row>
-              <Button type="submit" className="mt-3" disabled={enviando}>{enviando ? <Spinner size="sm" /> : 'Guardar cambios'}</Button>
+              <Button type="submit" className="mt-3" disabled={enviando || telMalo}>{enviando ? <Spinner size="sm" /> : 'Guardar cambios'}</Button>
             </Form>
           </Card.Body></Card>
         </Col>

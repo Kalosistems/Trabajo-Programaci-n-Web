@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Alert, Badge, Button, Card, Col, Form, Modal, Row, Spinner } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
-import { api, clp, decimal } from '../../api/cliente';
+import { api, clp, decimal, telefonoValido, MENSAJE_TELEFONO } from '../../api/cliente';
 import { useSesion } from '../../contexto/Sesion';
 import { useAvisos } from '../../contexto/Avisos';
 import { useCarrito } from '../../contexto/Carrito';
@@ -29,8 +29,11 @@ export default function Perfil() {
   const planes = useCarga(() => api.planes(), []);
   const [texto, color] = estadoImc(pb.imc || 0);
 
+  const telMalo = !telefonoValido(f.telefono);
+
   const guardar = async (e) => {
     e.preventDefault();
+    if (telMalo) { avisar(MENSAJE_TELEFONO, 'error'); return; }
     try {
       const r = await guardarA.ejecutar(() => api.actualizarPerfil({ ...f, peso: parseFloat(String(f.peso).replace(',', '.')), altura: parseFloat(String(f.altura).replace(',', '.')) }));
       actualizarUsuario({ nombre: r.usuario.nombre, telefono: r.usuario.telefono, perfil_biometrico: r.usuario.perfil_biometrico });
@@ -76,13 +79,14 @@ export default function Perfil() {
               <Form onSubmit={guardar}>
                 <Row className="g-3">
                   <Col md={6}><Form.Group controlId="pNombre"><Form.Label>Nombre</Form.Label><Form.Control value={f.nombre} onChange={c('nombre')} /></Form.Group></Col>
-                  <Col md={6}><Form.Group controlId="pTel"><Form.Label>Teléfono</Form.Label><Form.Control value={f.telefono} onChange={c('telefono')} /></Form.Group></Col>
+                  <Col md={6}><Form.Group controlId="pTel"><Form.Label>Teléfono</Form.Label><Form.Control type="tel" value={f.telefono} onChange={c('telefono')} placeholder="+569 1234 5678" maxLength={16} isInvalid={telMalo} />
+                    <Form.Control.Feedback type="invalid">{MENSAJE_TELEFONO}</Form.Control.Feedback></Form.Group></Col>
                   <Col xs={6} md={3}><Form.Group controlId="pPeso"><Form.Label>Peso (kg)</Form.Label><Form.Control inputMode="decimal" value={f.peso} onChange={c('peso')} /></Form.Group></Col>
                   <Col xs={6} md={3}><Form.Group controlId="pAlt"><Form.Label>Altura (m)</Form.Label><Form.Control inputMode="decimal" value={f.altura} onChange={c('altura')} /></Form.Group></Col>
                   <Col xs={6} md={3}><Form.Group controlId="pEdad"><Form.Label>Edad</Form.Label><Form.Control inputMode="numeric" value={f.edad} onChange={c('edad')} /></Form.Group></Col>
                   <Col xs={6} md={3}><Form.Group controlId="pGen"><Form.Label>Género</Form.Label><Form.Select value={f.genero} onChange={c('genero')}><option>Femenino</option><option>Masculino</option><option>Otro</option></Form.Select></Form.Group></Col>
                 </Row>
-                <Button type="submit" className="mt-3" disabled={guardarA.enviando}>{guardarA.enviando ? <Spinner size="sm" /> : 'Guardar cambios'}</Button>
+                <Button type="submit" className="mt-3" disabled={guardarA.enviando || telMalo}>{guardarA.enviando ? <Spinner size="sm" /> : 'Guardar cambios'}</Button>
               </Form>
             </Card.Body>
           </Card>
