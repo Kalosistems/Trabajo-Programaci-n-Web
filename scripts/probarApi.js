@@ -128,6 +128,10 @@ function revisar(nombre, condicion, detalle = '') {
     // Platillo, perfil y cambio hipotético (propagación del nombre)
     r = await llamar('POST', '/api/mongo/platillos', { token: tR, body: { nombre: 'Ensalada test', precio: 0, calorias: 300 } });
     revisar('platillo con precio 0 → 422', r.status === 422);
+    r = await llamar('POST', '/api/mongo/platillos', { token: tR, body: { nombre: 'Ensalada test', precio: 5990, calorias: 300, imagen_url: 'data:text/html;base64,PHNjcmlwdD4=' } });
+    revisar('foto que no es imagen → 422', r.status === 422 && r.data.codigo === 'IMAGEN_INVALIDA');
+    r = await llamar('POST', '/api/mongo/platillos', { token: tR, body: { nombre: 'Ensalada test', precio: 5990, calorias: 300, imagen_url: 'data:image/jpeg;base64,' + 'A'.repeat(800000) } });
+    revisar('foto demasiado grande → 413', r.status === 413);
     r = await llamar('POST', '/api/mongo/platillos', { token: tR, body: { nombre: 'Ensalada test', precio: 5990, calorias: 300, proteinas: 20, ingredientes: [{ nombre: 'Lechuga', cantidad_g: 80 }] } });
     revisar('crear platillo → 201 con índice de transparencia', r.status === 201 && r.data.platillo.indice_transparencia === 70);
     r = await llamar('PUT', '/api/mongo/usuarios/biometrico', { token: tC, body: { peso: 500 } });
