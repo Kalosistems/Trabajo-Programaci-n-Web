@@ -15,7 +15,8 @@ const RestauranteSchema = new mongoose.Schema({
     },
     password_hash: {
         type: String,
-        required: [true, 'La contraseña es obligatoria']
+        required: [true, 'La contraseña es obligatoria'],
+        select: false // hash bcrypt, no se devuelve en las consultas
     },
     especialidad: {
         type: String,

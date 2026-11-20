@@ -40,12 +40,16 @@ const PedidoSchema = new mongoose.Schema({
         enum: ['Pendiente', 'Pagado', 'En Preparación', 'En Camino', 'Entregado', 'Cancelado'],
         default: 'Pagado'
     },
+    // PIN de entrega (RF-15): se genera cuando el restaurante despacha el pedido,
+    // no al pagar. Solo lo ve el cliente dueño del pedido.
     pin_seguridad: { 
         type: String, 
-        required: true, 
         minlength: 4, 
-        maxlength: 4 
+        maxlength: 4,
+        default: null
     },
+    pin_generado_en: { type: Date, default: null },
+    intentos_pin: { type: Number, default: 0 }, // a los 5 intentos fallidos se bloquea (423)
     calificacion_transp: { 
         type: Number, 
         min: 1, 
@@ -83,5 +87,11 @@ const PedidoSchema = new mongoose.Schema({
     timestamps: true,
     collection: 'pedidos'
 });
+
+// Índices para las consultas más frecuentes (cambio hipotético "aparece una consulta
+// frecuente nueva"): "mis pedidos" del cliente y "pedidos entrantes" del local por estado.
+PedidoSchema.index({ 'cliente.usuario_id': 1, fecha_pedido: -1 });
+PedidoSchema.index({ restaurante_id: 1, estado: 1 });
+PedidoSchema.index({ repartidor_id: 1, estado: 1 });
 
 module.exports = mongoose.model('Pedido', PedidoSchema);

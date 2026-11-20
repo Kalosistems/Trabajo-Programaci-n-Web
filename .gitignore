@@ -1,2 +1,14 @@
 node_modules/
+
+# Variables de entorno: tienen la cadena de conexión y la clave de MongoDB Atlas
 .env
+env
+*.env
+
+# Bases de datos locales (la Etapa 1 usaba SQLite; ya no se usa y no se sube)
+*.db
+*.sqlite
+
+# Frontend: dependencias y compilación (se generan con npm install y npm run build)
+frontend/node_modules/
+frontend/dist/
