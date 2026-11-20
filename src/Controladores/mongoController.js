@@ -517,6 +517,19 @@ exports.crearPlatillo = async (req, res) => {
             return error(res, 422, 'DEMASIADOS_INGREDIENTES', 'Un platillo puede tener como máximo 30 ingredientes.');
         }
 
+        // Foto subida desde el equipo (data URL JPEG/PNG/WebP en base64) o enlace https
+        if (imagen_url) {
+            const img = String(imagen_url);
+            const esArchivo = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(img);
+            const esEnlace = /^https?:\/\/\S+$/.test(img) && img.length <= 2000;
+            if (!esArchivo && !esEnlace) {
+                return error(res, 422, 'IMAGEN_INVALIDA', 'La foto debe ser una imagen JPG, PNG o WebP.');
+            }
+            if (esArchivo && img.length > 700000) {
+                return error(res, 413, 'IMAGEN_MUY_GRANDE', 'La foto es demasiado grande (máximo 500 KB después de comprimirla).');
+            }
+        }
+
         const indice = calcularIndiceTransparencia({ proteinas, carbos, grasas, peso_porcion, alergenos, ingredientes_limpios, ingredientes });
 
         const nuevo = await Platillo.create({

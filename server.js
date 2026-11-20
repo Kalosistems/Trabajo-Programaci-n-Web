@@ -24,7 +24,9 @@ conectarMongo();
 // Middlewares
 app.disable('x-powered-by');
 app.use(cors({ origin: process.env.CORS_ORIGEN || true }));
-app.use(express.json({ limit: '100kb' }));   // límite del cuerpo de cada solicitud
+// Crear platillo admite hasta 1 MB porque lleva la foto subida (ya comprimida en el navegador)
+app.use('/api/mongo/platillos', express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '100kb' }));   // límite del cuerpo del resto de las solicitudes
 
 // Frontend en React + Bootstrap, compilado con "npm run build" en frontend/dist
 const FRONT = path.join(__dirname, 'frontend', 'dist');

@@ -131,7 +131,7 @@ Respuestas: **200** `{ pedidos_eliminados }` · **400** ID_INVALIDO · **403** �
 ### 3.5 Restaurante
 
 #### `POST /api/mongo/platillos` 🔐 (restaurante)
-Cuerpo: `nombre`, `precio` (> 0) y `calorias` (> 0) son obligatorios. Opcionales: `descripcion`, `categoria`, `imagen_url`, `proteinas`, `carbos`, `grasas`, `peso_porcion`, `alergenos`, `ingredientes_limpios` e `ingredientes` (hasta 30 elementos `{ nombre, cantidad_g, metodo_coccion }`). El restaurante sale del token. El servidor calcula el índice de transparencia: 50 % de base y hasta 100 % con los datos opcionales.
+Cuerpo: `nombre`, `precio` (> 0) y `calorias` (> 0) son obligatorios. Opcionales: `descripcion`, `categoria`, `imagen_url` (la foto subida desde el equipo como data URL `data:image/jpeg|png|webp;base64,…` de hasta 500 KB, o un enlace https; el frontend la reduce a 800 px antes de enviarla; responde 422 `IMAGEN_INVALIDA` o 413 `IMAGEN_MUY_GRANDE`), `proteinas`, `carbos`, `grasas`, `peso_porcion`, `alergenos`, `ingredientes_limpios` e `ingredientes` (hasta 30 elementos `{ nombre, cantidad_g, metodo_coccion }`). El restaurante sale del token. El servidor calcula el índice de transparencia: 50 % de base y hasta 100 % con los datos opcionales.
 Respuestas: **201** `{ platillo }` · **400** · **403** · **422**.
 
 #### `PUT /api/mongo/pedidos/estado` 🔐 (restaurante)

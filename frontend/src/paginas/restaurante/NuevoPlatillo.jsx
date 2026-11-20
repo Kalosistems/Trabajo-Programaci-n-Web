@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Button, Card, Col, Form, InputGroup, Row, Spinner, Table } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { api, clp } from '../../api/cliente';
@@ -8,6 +8,30 @@ import { useAccion, useTitulo } from '../../hooks';
 import { ImagenPlatillo, Transparencia } from '../../componentes/Insignias';
 
 const METODOS = ['Fresco', 'Plancha', 'Horno', 'Hervido', 'Vapor', 'Salteado', 'Frito'];
+const TIPOS_FOTO = ['image/jpeg', 'image/png', 'image/webp'];
+const MAX_ARCHIVO = 10 * 1024 * 1024; // 10 MB antes de comprimir
+
+// Reduce la foto a 800 px de lado como máximo y la convierte a JPEG (data URL) para guardarla en MongoDB
+function comprimirFoto(archivo, lado = 800, calidad = 0.8) {
+  return new Promise((resolver, rechazar) => {
+    const url = URL.createObjectURL(archivo);
+    const img = new Image();
+    img.onload = () => {
+      const escala = Math.min(1, lado / Math.max(img.width, img.height));
+      const lienzo = document.createElement('canvas');
+      lienzo.width = Math.round(img.width * escala);
+      lienzo.height = Math.round(img.height * escala);
+      const ctx = lienzo.getContext('2d');
+      ctx.fillStyle = '#fff'; // fondo blanco para PNG con transparencia
+      ctx.fillRect(0, 0, lienzo.width, lienzo.height);
+      ctx.drawImage(img, 0, 0, lienzo.width, lienzo.height);
+      URL.revokeObjectURL(url);
+      resolver(lienzo.toDataURL('image/jpeg', calidad));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rechazar(new Error('No se pudo leer la imagen.')); };
+    img.src = url;
+  });
+}
 
 // Mismo cálculo que el backend (mongoController.calcularIndiceTransparencia): vista previa en vivo
 function indice(f) {
@@ -37,6 +61,28 @@ export default function NuevoPlatillo() {
   const c = (k) => (e) => setF({ ...f, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value });
   const cambiarIng = (i, k, v) => setF({ ...f, ingredientes: f.ingredientes.map((x, j) => (j === i ? { ...x, [k]: v } : x)) });
   const valido = f.nombre.trim() && +f.precio > 0 && +f.calorias > 0;
+  const [procesandoFoto, setProcesandoFoto] = useState(false);
+  const archivoRef = useRef(null);
+
+  const elegirFoto = async (e) => {
+    const archivo = e.target.files?.[0];
+    if (!archivo) return;
+    if (!TIPOS_FOTO.includes(archivo.type)) { avisar('La foto debe ser JPG, PNG o WebP.', 'error'); e.target.value = ''; return; }
+    if (archivo.size > MAX_ARCHIVO) { avisar('La foto pesa más de 10 MB. Elige una más liviana.', 'error'); e.target.value = ''; return; }
+    setProcesandoFoto(true);
+    try {
+      let datos = await comprimirFoto(archivo);
+      if (datos.length > 650000) datos = await comprimirFoto(archivo, 600, 0.7);
+      setF((prev) => ({ ...prev, imagen_url: datos }));
+    } catch (err) {
+      avisar(err.message, 'error'); e.target.value = '';
+    } finally { setProcesandoFoto(false); }
+  };
+
+  const quitarFoto = () => {
+    setF((prev) => ({ ...prev, imagen_url: '' }));
+    if (archivoRef.current) archivoRef.current.value = '';
+  };
 
   const guardar = async (e) => {
     e.preventDefault();
@@ -67,7 +113,13 @@ export default function NuevoPlatillo() {
                   <Form.Control.Feedback type="invalid">Debe ser mayor que 0.</Form.Control.Feedback></InputGroup></Form.Group></Col>
                 <Col md={4}><Form.Group controlId="nKcal"><Form.Label>Calorías *</Form.Label><InputGroup><Form.Control inputMode="numeric" value={f.calorias} onChange={c('calorias')} isInvalid={validado && !(+f.calorias > 0)} /><InputGroup.Text>kcal</InputGroup.Text>
                   <Form.Control.Feedback type="invalid">Debe ser mayor que 0.</Form.Control.Feedback></InputGroup></Form.Group></Col>
-                <Col md={4}><Form.Group controlId="nImg"><Form.Label>URL de la foto</Form.Label><Form.Control type="url" value={f.imagen_url} onChange={c('imagen_url')} placeholder="https://…" /></Form.Group></Col>
+                <Col md={12}><Form.Group controlId="nImg"><Form.Label>Foto del platillo</Form.Label>
+                  <div className="d-flex align-items-center gap-2 flex-wrap">
+                    <Form.Control ref={archivoRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={elegirFoto} disabled={procesandoFoto} style={{ maxWidth: 420 }} />
+                    {procesandoFoto && <Spinner size="sm" />}
+                    {f.imagen_url && !procesandoFoto && <Button size="sm" variant="outline-danger" onClick={quitarFoto}><i className="bi bi-trash me-1" />Quitar foto</Button>}
+                  </div>
+                  <Form.Text>JPG, PNG o WebP. Se ajusta automáticamente a 800 px. Si no subes una, se usa una imagen por defecto.</Form.Text></Form.Group></Col>
               </Row>
             </Card.Body></Card>
 
@@ -103,7 +155,7 @@ export default function NuevoPlatillo() {
             </Card.Body></Card>
             <div className="d-flex gap-2">
               <Button variant="outline-secondary" onClick={() => navegar('/local/platillos')}>Cancelar</Button>
-              <Button type="submit" size="lg" disabled={enviando}>{enviando ? <><Spinner size="sm" className="me-2" />Guardando…</> : 'Publicar platillo'}</Button>
+              <Button type="submit" size="lg" disabled={enviando || procesandoFoto}>{enviando ? <><Spinner size="sm" className="me-2" />Guardando…</> : 'Publicar platillo'}</Button>
             </div>
           </Form>
         </Col>
