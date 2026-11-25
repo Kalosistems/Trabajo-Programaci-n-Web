@@ -1,51 +1,13 @@
 import { useRef, useState } from 'react';
-import { Button, Card, Col, Form, InputGroup, Row, Spinner, Table } from 'react-bootstrap';
+import { Alert, Button, Card, Col, Form, InputGroup, ListGroup, Row, Spinner, Table } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { api, clp } from '../../api/cliente';
 import { useSesion } from '../../contexto/Sesion';
 import { useAvisos } from '../../contexto/Avisos';
-import { useAccion, useTitulo } from '../../hooks';
+import { useAccion, useCarga, useTitulo } from '../../hooks';
+import { comprimirFoto, MAX_ARCHIVO, TIPOS_FOTO } from '../../utils/imagen';
 import { ImagenPlatillo, Transparencia } from '../../componentes/Insignias';
-
-const METODOS = ['Fresco', 'Plancha', 'Horno', 'Hervido', 'Vapor', 'Salteado', 'Frito'];
-const TIPOS_FOTO = ['image/jpeg', 'image/png', 'image/webp'];
-const MAX_ARCHIVO = 10 * 1024 * 1024; // 10 MB antes de comprimir
-
-// Reduce la foto a 800 px de lado como máximo y la convierte a JPEG (data URL) para guardarla en MongoDB
-function comprimirFoto(archivo, lado = 800, calidad = 0.8) {
-  return new Promise((resolver, rechazar) => {
-    const url = URL.createObjectURL(archivo);
-    const img = new Image();
-    img.onload = () => {
-      const escala = Math.min(1, lado / Math.max(img.width, img.height));
-      const lienzo = document.createElement('canvas');
-      lienzo.width = Math.round(img.width * escala);
-      lienzo.height = Math.round(img.height * escala);
-      const ctx = lienzo.getContext('2d');
-      ctx.fillStyle = '#fff'; // fondo blanco para PNG con transparencia
-      ctx.fillRect(0, 0, lienzo.width, lienzo.height);
-      ctx.drawImage(img, 0, 0, lienzo.width, lienzo.height);
-      URL.revokeObjectURL(url);
-      resolver(lienzo.toDataURL('image/jpeg', calidad));
-    };
-    img.onerror = () => { URL.revokeObjectURL(url); rechazar(new Error('No se pudo leer la imagen.')); };
-    img.src = url;
-  });
-}
-
-// Mismo cálculo que el backend (mongoController.calcularIndiceTransparencia): vista previa en vivo
-function indice(f) {
-  let v = 50;
-  if (+f.proteinas > 0) v += 10;
-  if (+f.carbos > 0) v += 10;
-  if (+f.grasas > 0) v += 10;
-  if (+f.peso_porcion > 0) v += 10;
-  if (f.alergenos.trim().length > 3) v += 5;
-  if (f.ingredientes_limpios) v += 5;
-  if (f.ingredientes.some((i) => i.nombre.trim())) v += 10;
-  return Math.min(v, 100);
-}
-
+import { calcularIndice, METODOS_COCCION as METODOS } from '../../utils/transparencia';
 export default function NuevoPlatillo() {
   useTitulo('Crear platillo');
   const { usuario } = useSesion();
@@ -55,12 +17,28 @@ export default function NuevoPlatillo() {
   const [f, setF] = useState({
     nombre: '', descripcion: '', categoria: 'Almuerzo', precio: '', calorias: '', imagen_url: '',
     proteinas: '', carbos: '', grasas: '', peso_porcion: '', alergenos: '', ingredientes_limpios: false,
-    ingredientes: [{ nombre: '', cantidad_g: '', metodo_coccion: 'Fresco' }]
+    ingredientes: [{ nombre: '', cantidad_g: '', unidad: 'g', metodo_coccion: '' }]
   });
   const [validado, setValidado] = useState(false);
   const c = (k) => (e) => setF({ ...f, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value });
   const cambiarIng = (i, k, v) => setF({ ...f, ingredientes: f.ingredientes.map((x, j) => (j === i ? { ...x, [k]: v } : x)) });
   const valido = f.nombre.trim() && +f.precio > 0 && +f.calorias > 0;
+  const { indice, detalle } = calcularIndice(f);
+  const alimentos = useCarga(() => api.alimentos(), []);
+  const [calculo, setCalculo] = useState(null);
+  const [calculando, setCalculando] = useState(false);
+
+  // RF-08: Kalo calcula calorías y macros a partir de la receta
+  const calcular = async () => {
+    setCalculando(true); setCalculo(null);
+    try {
+      const ingredientes = f.ingredientes.filter((i) => i.nombre.trim()).map((i) => ({ ...i, cantidad_g: +i.cantidad_g || 0 }));
+      const r = await api.calcularNutricion({ ingredientes });
+      const n = r.datos;
+      setF((prev) => ({ ...prev, calorias: String(n.calorias), proteinas: String(n.proteinas), carbos: String(n.carbos), grasas: String(n.grasas) }));
+      setCalculo({ mensaje: r.mensaje, fuente: r.fuente, ...n });
+    } catch (err) { avisar(err.message, 'error'); } finally { setCalculando(false); }
+  };
   const [procesandoFoto, setProcesandoFoto] = useState(false);
   const archivoRef = useRef(null);
 
@@ -137,21 +115,37 @@ export default function NuevoPlatillo() {
             <Card className="mb-3"><Card.Body>
               <div className="d-flex justify-content-between align-items-center">
                 <h2 className="h6 text-secondary text-uppercase mb-0">Ingredientes (receta estandarizada)</h2>
-                <Button size="sm" variant="outline-primary" disabled={f.ingredientes.length >= 30} onClick={() => setF({ ...f, ingredientes: [...f.ingredientes, { nombre: '', cantidad_g: '', metodo_coccion: 'Fresco' }] })}><i className="bi bi-plus-lg me-1" />Agregar</Button>
+                <Button size="sm" variant="outline-primary" disabled={f.ingredientes.length >= 30} onClick={() => setF({ ...f, ingredientes: [...f.ingredientes, { nombre: '', cantidad_g: '', unidad: 'g', metodo_coccion: '' }] })}><i className="bi bi-plus-lg me-1" />Agregar</Button>
               </div>
               <Table size="sm" className="mt-2 align-middle">
-                <thead><tr><th>Ingrediente</th><th style={{ width: 120 }}>Gramos</th><th style={{ width: 150 }}>Cocción</th><th style={{ width: 40 }} /></tr></thead>
+                <thead><tr><th>Ingrediente</th><th style={{ width: 170 }}>Cantidad</th><th style={{ width: 150 }}>Cocción</th><th style={{ width: 40 }} /></tr></thead>
                 <tbody>
                   {f.ingredientes.map((ing, i) => (
                     <tr key={i}>
-                      <td><Form.Control size="sm" value={ing.nombre} onChange={(e) => cambiarIng(i, 'nombre', e.target.value)} aria-label={`Ingrediente ${i + 1}`} /></td>
-                      <td><Form.Control size="sm" inputMode="numeric" value={ing.cantidad_g} onChange={(e) => cambiarIng(i, 'cantidad_g', e.target.value)} aria-label={`Gramos del ingrediente ${i + 1}`} /></td>
-                      <td><Form.Select size="sm" value={ing.metodo_coccion} onChange={(e) => cambiarIng(i, 'metodo_coccion', e.target.value)} aria-label={`Cocción del ingrediente ${i + 1}`}>{METODOS.map((m) => <option key={m}>{m}</option>)}</Form.Select></td>
+                      <td><Form.Control size="sm" list="lista-alimentos" value={ing.nombre} onChange={(e) => cambiarIng(i, 'nombre', e.target.value)} placeholder="Ej. pechuga de pollo" aria-label={`Ingrediente ${i + 1}`} /></td>
+                      <td><InputGroup size="sm">
+                        <Form.Control inputMode="numeric" value={ing.cantidad_g} onChange={(e) => cambiarIng(i, 'cantidad_g', e.target.value)} aria-label={`Cantidad del ingrediente ${i + 1}`} />
+                        <Form.Select value={ing.unidad || 'g'} onChange={(e) => cambiarIng(i, 'unidad', e.target.value)} aria-label={`Unidad del ingrediente ${i + 1}`} style={{ flex: '0 0 72px' }}><option value="g">g</option><option value="ml">ml</option></Form.Select>
+                      </InputGroup></td>
+                      <td><Form.Select size="sm" value={ing.metodo_coccion} onChange={(e) => cambiarIng(i, 'metodo_coccion', e.target.value)} aria-label={`Cocción del ingrediente ${i + 1}`}><option value="">— Elige —</option>{METODOS.map((m) => <option key={m}>{m}</option>)}</Form.Select></td>
                       <td><Button size="sm" variant="link" className="text-danger" onClick={() => setF({ ...f, ingredientes: f.ingredientes.filter((_, j) => j !== i) })} aria-label="Quitar ingrediente"><i className="bi bi-x-lg" /></Button></td>
                     </tr>
                   ))}
                 </tbody>
               </Table>
+              <datalist id="lista-alimentos">{(alimentos.datos || []).map((a) => <option key={a.nombre} value={a.nombre.charAt(0).toUpperCase() + a.nombre.slice(1)} />)}</datalist>
+              <div className="d-flex align-items-center gap-2 flex-wrap">
+                <Button variant="success" size="sm" onClick={calcular} disabled={calculando || !f.ingredientes.some((x) => x.nombre.trim() && +x.cantidad_g > 0)}>
+                  {calculando ? <Spinner size="sm" className="me-1" /> : <i className="bi bi-calculator me-1" />}Calcular calorías y macros con los ingredientes
+                </Button>
+                <small className="text-secondary">Completa los campos de nutrición automáticamente.</small>
+              </div>
+              {calculo && (
+                <Alert variant="success" className="small mt-3 mb-0" dismissible onClose={() => setCalculo(null)}>
+                  <strong>{calculo.calorias} kcal</strong> · {calculo.proteinas} g prot. · {calculo.carbos} g carb. · {calculo.grasas} g grasa. {calculo.mensaje}
+                  <div className="text-secondary mt-1">{calculo.fuente}</div>
+                </Alert>
+              )}
             </Card.Body></Card>
             <div className="d-flex gap-2">
               <Button variant="outline-secondary" onClick={() => navegar('/local/platillos')}>Cancelar</Button>
@@ -165,13 +159,20 @@ export default function NuevoPlatillo() {
             <Card className="overflow-hidden shadow-sm">
               <ImagenPlatillo src={f.imagen_url} alt="Vista previa" />
               <Card.Body>
-                <div className="d-flex justify-content-between gap-2"><h2 className="h6 mb-1">{f.nombre || 'Nombre del platillo'}</h2><Transparencia valor={indice(f)} /></div>
+                <div className="d-flex justify-content-between gap-2"><h2 className="h6 mb-1">{f.nombre || 'Nombre del platillo'}</h2><Transparencia valor={indice} /></div>
                 <small className="text-secondary">{usuario?.nombre}</small>
                 <div className="small mt-2"><i className="bi bi-fire text-warning me-1" />{f.calorias || 0} kcal · {f.proteinas || 0} g prot.</div>
                 <div className="fs-5 fw-bold mt-2">{clp(f.precio)}</div>
               </Card.Body>
             </Card>
-            <Card className="mt-3"><Card.Body><Transparencia valor={indice(f)} grande /><p className="small text-secondary mt-2 mb-0">Sube tu puntaje informando macronutrientes, porción, alérgenos e ingredientes.</p></Card.Body></Card>
+            <Card className="mt-3"><Card.Body><Transparencia valor={indice} grande /><ListGroup variant="flush" className="small mt-2">
+              {detalle.map((d) => (
+                <ListGroup.Item key={d.criterio} className="d-flex justify-content-between px-0 py-1">
+                  <span><i className={`bi bi-${d.puntos >= d.max && d.max > 0 ? 'check-circle-fill text-success' : d.puntos < 0 ? 'exclamation-triangle-fill text-danger' : 'circle text-secondary'} me-1`} />{d.criterio}</span>
+                  <span className="text-nowrap">{d.puntos}{d.max ? ` / ${d.max}` : ''}</span>
+                </ListGroup.Item>
+              ))}
+            </ListGroup></Card.Body></Card>
           </div>
         </Col>
       </Row>

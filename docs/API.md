@@ -96,11 +96,32 @@ JOIN con `$lookup` entre `platillos` y `restaurantes`. **200** `{ datos: [{ nomb
 #### `GET /api/mongo/planes?precioMin=20` 🔓
 Planes activos con `precio_mensual > precioMin`, de mayor a menor precio. **200** · **400**.
 
+#### `GET /api/mongo/restaurantes` 🔓 (RF-11)
+Ranking de locales activos por `indice_transparencia` (y luego por calificación), con `total_platillos` y `total_fotos_cocina`. Nunca devuelve correo ni hash. **200**.
+
+#### `GET /api/mongo/restaurantes/:id` 🔓 (RF-07)
+Perfil público del local: `{ restaurante, platillos, fotos, evaluaciones }`. Las fotos de la cocina traen `url` (no la imagen) y las evaluaciones solo el primer nombre del cliente. **200** · **400** · **404**.
+
+#### `GET /api/mongo/restaurantes/fotos/:id` 🔓
+Devuelve la imagen de una foto de la cocina (`image/jpeg`, caché de 1 día) o redirige si es un enlace https. **200** · **302** · **404**.
+
+#### `GET /api/mongo/nutricion/alimentos` 🔓 (RF-08)
+Tabla de referencia (≈75 alimentos, valores por 100 g basados en USDA FoodData Central) para el autocompletado. **200**.
+
+#### `POST /api/mongo/nutricion/calcular` 🔓 (RF-08)
+Cuerpo: `ingredientes: [{ nombre, cantidad_g, unidad: "g"|"ml", metodo_coccion }]` (máx. 30). Devuelve `calorias`, `proteinas`, `carbos`, `grasas`, los ingredientes `reconocidos` y `no_reconocidos`, y el `indice_transparencia` que tendría el platillo con su `detalle_indice`. Los ingredientes fritos suman 5 g de aceite por cada 100 g.
+Respuestas: **200** · **400** DATOS_FALTANTES · **422** SIN_DATOS_NUTRICIONALES o DEMASIADOS_INGREDIENTES.
+
+#### `GET /api/salud` 🔓 (RNF-04)
+Estado del servicio para monitores de disponibilidad: `{ base_de_datos: "conectada", activo_desde_s }`. **200** · **503** si MongoDB no responde. No cuenta para el límite de solicitudes.
+
 ### 3.3 Consultas con sesión
 
 | Método y ruta | Qué devuelve | Respuestas |
 |---|---|---|
-| `GET /api/mongo/estadisticas` 🔐 | `$group` por género: cantidad de clientes y promedios de peso, altura, IMC y meta calórica (sin nombres). | 200 · 401 |
+| `GET /api/mongo/estadisticas` 🔐 | `$group` por género (cantidad de clientes) y promedios de peso, altura, IMC y meta calórica calculados en el servidor, porque esos datos están cifrados en la base (sin nombres). | 200 · 401 |
+| `GET /api/mongo/notificaciones` 🔐 | Últimos 30 avisos del usuario del token y `no_leidas` (RF-12, RF-20, RF-23). Nunca incluyen el PIN ni datos de salud. Se borran solos a los 30 días. | 200 · 401 |
+| `PUT /api/mongo/notificaciones/leidas` 🔐 | Marca como leídos los avisos de `ids` (o todos si no se envía). | 200 · 400 · 401 |
 | `GET /api/mongo/usuarios` 🔐 | Clientes activos con proyección: nombre, fecha de registro, género, IMC y meta calórica. No devuelve correo, teléfono ni contraseña. | 200 · 401 |
 | `GET /api/mongo/usuarios-pedidos` 🔐 | LEFT JOIN (`$lookup` + `$size`): cada cliente con su cantidad de pedidos y gasto total, también los que tienen 0. | 200 · 401 |
 | `GET /api/mongo/pedidos?estado=` 🔐 | Pedidos del usuario del token: el cliente ve los suyos, el restaurante los de su local y el repartidor los asignados a él más los que aún no tienen repartidor. Máximo 100, del más nuevo al más antiguo. El `pin_seguridad` solo aparece para el cliente dueño. | 200 · 400 · 401 |
@@ -108,38 +129,69 @@ Planes activos con `precio_mensual > precioMin`, de mayor a menor precio. **200*
 ### 3.4 Cliente
 
 #### `POST /api/mongo/pedidos` 🔐 (cliente)
-Crea el pedido en estado "En Preparación". El servidor calcula el precio de cada línea y el total con los precios guardados en `platillos`, más el envío de $1.490: no confía en los precios que manda el navegador. Cada línea guarda una copia (snapshot) del nombre y del precio del momento. **No se genera PIN todavía.**
+Crea el pedido en estado **"Pagado"** y avisa al restaurante (RF-20). El servidor calcula el precio de cada línea y el total con los precios guardados en `platillos`, más el envío de $1.490: no confía en los precios que manda el navegador. Cada línea guarda una copia (snapshot) del nombre, del precio y de las calorías del momento; el pedido guarda `total_calorias` (RF-03). **No se genera PIN todavía.**
+
+El pago lo autoriza antes la pasarela (RNF-07): el navegador manda los datos de la tarjeta a la pasarela y a Kalo solo llega su comprobante. Si el cuerpo trae algo parecido a un número de tarjeta, se rechaza.
 
 ```json
-{ "items": [ { "platillo_id": "6620f6e3e13b8a1c90000001", "cantidad": 2 } ] }
+{ "items": [ { "platillo_id": "6620f6e3e13b8a1c90000001", "cantidad": 2 } ],
+  "pago": { "referencia": "pay_sim_4k2j9x0a1b2c3d4e5f6g", "marca": "Visa", "ultimos4": "1111", "metodo": "credito" } }
 ```
 
-Respuestas: **201** `{ mensaje, pedido }` · **400** CARRITO_VACIO o ID_INVALIDO · **403** · **404** PLATILLO_NO_ENCONTRADO · **422** VARIOS_RESTAURANTES, CANTIDAD_INVALIDA (1 a 20) o DEMASIADOS_ITEMS (más de 20 líneas).
+Respuestas: **201** `{ mensaje, pedido }` · **400** CARRITO_VACIO o ID_INVALIDO · **402** PAGO_REQUERIDO · **403** · **404** PLATILLO_NO_ENCONTRADO · **422** VARIOS_RESTAURANTES, CANTIDAD_INVALIDA (1 a 20), DEMASIADOS_ITEMS, PAGO_INVALIDO o DATOS_TARJETA_NO_PERMITIDOS.
+
+#### `GET /api/mongo/usuarios/consumo` 🔐 (cliente) · RF-03
+Calorías del día (hora de Chile): `{ meta_calorica_diaria, consumidas_hoy, en_camino_kcal, restantes, porcentaje, pedidos_entregados_hoy }`. Se cuentan los pedidos entregados hoy; se actualiza apenas el repartidor valida el PIN. **200** · **404**.
+
+#### `POST /api/mongo/planes/contratar` 🔐 (cliente) · RF-21
+Cuerpo: `plan_id` y `pago` (igual que en pedidos). Crea un pedido de `tipo: "plan"` con la copia del plan en `plan_adquirido` (relación PLAN_NUTRICIONAL–PEDIDO del modelo E-R), guarda `plan_activo` en la cuenta y la meta diaria pasa a ser la del plan.
+Respuestas: **201** `{ pedido, usuario }` · **400** · **402** · **404** PLAN_NO_ENCONTRADO · **409** PLAN_YA_CONTRATADO · **422**.
+
+#### `DELETE /api/mongo/planes/contrato` 🔐 (cliente) · RF-21
+Cancela el plan activo; la meta vuelve a la recomendada por la fórmula. **200** `{ usuario }` · **409** SIN_PLAN.
 
 #### `POST /api/mongo/pedidos/evaluar` 🔐 (cliente)
 Cuerpo: `codigo_pedido`, `similitud_foto`, `gramaje_porcion`, `velocidad_prep` y `calificacion_general` (enteros de 1 a 5), y `comentario` opcional (máx. 500 caracteres).
-Respuestas: **200** · **400** · **404** si el pedido no es del cliente · **409** PEDIDO_NO_ENTREGADO · **422** NOTA_INVALIDA.
+Guarda la evaluación, recalcula el Índice de Transparencia y la calificación del local (RF-14) y le avisa al restaurante.
+Respuestas: **200** `{ pedido, indice_restaurante }` · **400** · **404** si el pedido no es del cliente · **409** PEDIDO_NO_ENTREGADO o YA_EVALUADO · **422** NOTA_INVALIDA.
 
 #### `PUT /api/mongo/usuarios/biometrico` 🔐 (cliente)
-Cuerpo (todo opcional): `peso`, `altura`, `edad`, `genero`, `nombre`, `telefono`. Recalcula el IMC. Si cambian el nombre o el teléfono, también actualiza la copia guardada en los pedidos del cliente con `updateMany`.
+Cuerpo (todo opcional): `peso`, `altura`, `edad`, `genero`, `nivel_actividad` (sedentario, ligero, moderado, intenso), `objetivo` (bajar, mantener, subir), `nombre`, `telefono`. Recalcula el IMC y la meta calórica con Mifflin-St Jeor (si hay un plan activo, la meta sigue siendo la del plan). Los datos de salud se guardan cifrados con AES-256-GCM. Si cambian el nombre o el teléfono, también actualiza la copia guardada en los pedidos del cliente con `updateMany`.
 Respuestas: **200** `{ usuario, pedidos_actualizados }` · **404** · **422** BIOMETRIA_INVALIDA o TELEFONO_INVALIDO (el teléfono debe tener 11 dígitos).
 
 #### `DELETE /api/mongo/usuarios/:usuario_id` 🔐 (cliente)
-Elimina la cuenta y sus pedidos (derecho de supresión de datos de salud, Ley 21.719). Solo se puede borrar la propia cuenta.
+Elimina la cuenta, sus pedidos y sus avisos (derecho de supresión de datos de salud, Ley 21.719). Solo se puede borrar la propia cuenta.
 Respuestas: **200** `{ pedidos_eliminados }` · **400** ID_INVALIDO · **403** · **404**.
 
 ### 3.5 Restaurante
 
 #### `POST /api/mongo/platillos` 🔐 (restaurante)
-Cuerpo: `nombre`, `precio` (> 0) y `calorias` (> 0) son obligatorios. Opcionales: `descripcion`, `categoria`, `imagen_url` (la foto subida desde el equipo como data URL `data:image/jpeg|png|webp;base64,…` de hasta 500 KB, o un enlace https; el frontend la reduce a 800 px antes de enviarla; responde 422 `IMAGEN_INVALIDA` o 413 `IMAGEN_MUY_GRANDE`), `proteinas`, `carbos`, `grasas`, `peso_porcion`, `alergenos`, `ingredientes_limpios` e `ingredientes` (hasta 30 elementos `{ nombre, cantidad_g, metodo_coccion }`). El restaurante sale del token. El servidor calcula el índice de transparencia: 50 % de base y hasta 100 % con los datos opcionales.
-Respuestas: **201** `{ platillo }` · **400** · **403** · **422**.
+Cuerpo: `nombre`, `precio` (> 0) y `calorias` (> 0) son obligatorios. Opcionales: `descripcion`, `categoria`, `imagen_url` (la foto subida desde el equipo como data URL `data:image/jpeg|png|webp;base64,…` de hasta 500 KB, o un enlace https; el frontend la reduce a 800 px antes de enviarla; responde 422 `IMAGEN_INVALIDA` o 413 `IMAGEN_MUY_GRANDE`), `proteinas`, `carbos`, `grasas`, `peso_porcion`, `alergenos`, `ingredientes_limpios` e `ingredientes` (hasta 30 elementos `{ nombre, cantidad_g, unidad: "g"|"ml", metodo_coccion }`). El restaurante sale del token. Si se envía `calcular_nutricion: true` o no se envían las calorías, Kalo las calcula con los ingredientes (RF-08) y marca `nutricion_calculada`.
+**Índice de Transparencia (RF-09, 1 a 100):** nombre, precio y calorías 20 · macros informados 15 (5 c/u) · porción 10 · alérgenos 5 · descripción 5 · foto propia 5 · lista de ingredientes 10 · gramos de cada ingrediente 20 · método de cocción de cada ingrediente 10. Si se informan los tres macros y las calorías no calzan con 4·P + 4·C + 9·G (±25 %), resta 10. Después se recalcula el índice del local.
+Respuestas: **201** `{ platillo, indice_restaurante }` · **400** · **403** · **413** · **422**.
+
+#### `GET /api/mongo/platillos/mios` 🔐 (restaurante)
+Todos los platillos del local, incluidos los retirados del menú. **200**.
+
+#### `PUT /api/mongo/platillos/:id/estado` 🔐 (restaurante)
+Cuerpo: `activo` (true/false). Publica o retira el platillo del menú y recalcula el índice del local. **200** · **400** · **404**.
+
+#### `GET /api/mongo/restaurantes/mi-local` 🔐 (restaurante)
+Datos del local, fotos de la cocina, evaluaciones y `max_fotos` (12). **200**.
+
+#### `POST /api/mongo/restaurantes/fotos` 🔐 (restaurante) · RF-07
+Cuerpo: `imagen` (data URL JPEG/PNG/WebP ya comprimida en el navegador, máx. 500 KB, o enlace https), `descripcion` (máx. 120) y `area` (Cocina, Preparación, Almacenamiento, Lavado u Otra). Se guarda en la colección `fotos_cocina`; la primera queda como `foto_cocina` del local.
+Respuestas: **201** `{ foto }` · **400** · **413** IMAGEN_MUY_GRANDE · **422** IMAGEN_INVALIDA o LIMITE_FOTOS.
+
+#### `DELETE /api/mongo/restaurantes/fotos/:id` 🔐 (restaurante)
+Elimina una foto propia. **200** · **400** · **404**.
 
 #### `PUT /api/mongo/pedidos/estado` 🔐 (restaurante)
-Cuerpo: `codigo_pedido`, `nuevo_estado` y `repartidor_id` (opcional, al despachar). Solo permite avanzar en orden: Pagado → En Preparación → En Camino, o pasar a Cancelado. **Al pasar a "En Camino" (despacho) se genera el PIN de 4 dígitos** con `crypto.randomInt`. Al restaurante no se le muestra.
+Cuerpo: `codigo_pedido`, `nuevo_estado` y `repartidor_id` (opcional, al despachar). Solo permite avanzar en orden: Pagado → En Preparación (aceptar) → En Camino (despachar), o pasar a Cancelado (rechazar: el pago queda "Reembolsado"). **Al pasar a "En Camino" se genera el PIN de 4 dígitos** con `crypto.randomInt`, distinto de los PIN de otros pedidos en camino. Al restaurante no se le muestra. Cada cambio le avisa al cliente (sin el PIN) y, al despachar, al repartidor asignado.
 Respuestas: **200** · **400** · **404** PEDIDO_NO_ENCONTRADO o REPARTIDOR_NO_ENCONTRADO · **409** CAMBIO_NO_PERMITIDO · **422** ESTADO_INVALIDO.
 
 #### `GET /api/mongo/repartidores` 🔐 (restaurante)
-Repartidores activos (nombre, vehículo, teléfono, estado y calificación) para elegir uno al despachar. **200**.
+Repartidores activos que no están desconectados (los disponibles primero) para elegir uno al despachar. **200**.
 
 #### `PUT /api/mongo/restaurantes/mi-local` 🔐 (restaurante)
 Cuerpo opcional: `nombre`, `direccion`, `telefono`, `especialidad`. **200** · **404** · **422** TELEFONO_INVALIDO (el teléfono debe tener 11 dígitos).
@@ -150,21 +202,28 @@ Cuerpo opcional: `nombre`, `direccion`, `telefono`, `especialidad`. **200** · *
 Cuerpo: `codigo_pedido`. Asigna el pedido al repartidor y lo deja "En Camino". Si el pedido aún no tenía PIN, lo genera en ese momento.
 Respuestas: **200** · **404** · **409** PEDIDO_TOMADO o CAMBIO_NO_PERMITIDO.
 
+#### `PUT /api/mongo/pedidos/cerca` 🔐 (repartidor) · RF-23
+Cuerpo: `codigo_pedido`. Avisa al cliente que el repartidor llega en 5 minutos o menos (una sola vez por pedido). **200** · **404** · **409**.
+
+#### `PUT /api/mongo/repartidores/disponibilidad` 🔐 (repartidor)
+Cuerpo: `estado` ("Disponible" o "Desconectado"). **200** · **422** ESTADO_INVALIDO.
+
 #### `POST /api/mongo/pedidos/validar-pin` 🔐 (repartidor)
-Cuerpo: `codigo_pedido` y `pin_ingresado` (4 dígitos). Si el PIN coincide, el pedido queda "Entregado".
+Cuerpo: `codigo_pedido` y `pin_ingresado` (4 dígitos). Si el PIN coincide, el pedido queda "Entregado", se suman sus calorías al consumo del día del cliente y se le pide evaluarlo (RF-12, RF-18). Al 5.º intento fallido se avisa al restaurante.
 Respuestas: **200** · **400** · **401** PIN_INCORRECTO (indica los intentos que quedan) · **403** si el pedido es de otro repartidor · **404** · **409** YA_ENTREGADO o PEDIDO_NO_DESPACHADO · **422** PIN_FORMATO · **423** PIN_BLOQUEADO (5 intentos fallidos) · **429**.
 
 ## 4. Errores
 
 | HTTP | Cuándo | Ejemplos de `codigo` |
 |---|---|---|
-| 400 | Faltan datos, el JSON está mal formado o un parámetro no es válido | DATOS_FALTANTES, JSON_INVALIDO, PARAMETRO_INVALIDO, ID_INVALIDO, CARRITO_VACIO |
+| 400 | Faltan datos, el JSON está mal formado, un parámetro no es válido o trae claves "$…" (inyección NoSQL) | DATOS_FALTANTES, JSON_INVALIDO, PARAMETRO_INVALIDO, ID_INVALIDO, CARRITO_VACIO, DATOS_NO_PERMITIDOS |
+| 402 | Falta la confirmación de pago de la pasarela | PAGO_REQUERIDO |
 | 401 | No hay sesión, el token venció o la credencial es incorrecta | NO_AUTENTICADO, TOKEN_INVALIDO, SESION_VENCIDA, CREDENCIALES_INVALIDAS, PIN_INCORRECTO |
 | 403 | El rol no puede hacer esa acción, o el recurso es de otro usuario | SIN_PERMISO |
 | 404 | No existe el recurso o la ruta | PEDIDO_NO_ENCONTRADO, PLATILLO_NO_ENCONTRADO, RUTA_NO_ENCONTRADA |
-| 409 | Choca con el estado actual | CORREO_REGISTRADO, CAMBIO_NO_PERMITIDO, PEDIDO_TOMADO, YA_ENTREGADO |
+| 409 | Choca con el estado actual | CORREO_REGISTRADO, CAMBIO_NO_PERMITIDO, PEDIDO_TOMADO, YA_ENTREGADO, YA_EVALUADO, PLAN_YA_CONTRATADO, SIN_PLAN |
 | 413 | El cuerpo supera los 100 KB | CUERPO_DEMASIADO_GRANDE |
-| 422 | Los datos tienen el formato correcto, pero no cumplen las reglas del negocio | CLAVE_DEBIL, BIOMETRIA_INVALIDA, TELEFONO_INVALIDO, VARIOS_RESTAURANTES, NOTA_INVALIDA |
+| 422 | Los datos tienen el formato correcto, pero no cumplen las reglas del negocio | CLAVE_DEBIL, BIOMETRIA_INVALIDA, TELEFONO_INVALIDO, VARIOS_RESTAURANTES, NOTA_INVALIDA, DATOS_TARJETA_NO_PERMITIDOS, LIMITE_FOTOS, SIN_DATOS_NUTRICIONALES |
 | 423 | PIN bloqueado por intentos | PIN_BLOQUEADO |
 | 429 | Se superó un límite de solicitudes | DEMASIADAS_SOLICITUDES |
 | 500 | Error inesperado (el detalle queda en el registro del servidor, no se envía al cliente) | ERROR_INTERNO |
@@ -223,7 +282,7 @@ curl -X POST http://localhost:3000/api/mongo/pedidos/validar-pin -H "Authorizati
 HTTP 401  { "exito": false, "codigo": "NO_AUTENTICADO", "mensaje": "Debes iniciar sesión para usar esta función." }
 ```
 
-El archivo `scripts/probarApi.js` (`npm run test:api`) ejecuta 46 pruebas de este tipo sobre el flujo completo.
+El archivo `scripts/probarApi.js` (`npm run test:api`) ejecuta 75 pruebas de este tipo sobre el flujo completo.
 
 ## 6. Límites y cuotas
 
@@ -255,3 +314,18 @@ Cada respuesta trae las cabeceras `RateLimit-Policy` y `RateLimit` (límite, sol
 - **Errores sin detalles internos:** un 500 no envía el mensaje técnico al navegador.
 - **Datos de salud (Ley 21.719):** la consulta de clientes no expone correo ni teléfono, las estadísticas solo muestran promedios, y el cliente puede borrar su cuenta.
 - **Pendiente:** en producción, HTTPS (Railway lo entrega), restringir CORS al dominio propio (`CORS_ORIGEN`) y restringir el acceso de red de Atlas a la IP del servidor en vez de 0.0.0.0/0.
+
+## 8. Requisitos no funcionales en el código (Etapa 3)
+
+| Requisito | Cómo se cumple |
+|---|---|
+| RNF-01 Mobile-first | Grilla de Bootstrap: barra inferior en celular, filtros en panel deslizable, tablero en columnas en escritorio. |
+| RNF-02 Datos de salud | Contraseñas con bcrypt. Peso, altura, edad, IMC, meta y objetivo se guardan cifrados con AES-256-GCM (`src/utils/cifrado.js`, clave `DATOS_SALUD_CLAVE`). `npm run cifrar-salud` cifra las cuentas antiguas. |
+| RNF-03 Rendimiento | Compresión gzip, índices en `platillos`, `restaurantes`, `pedidos` y `fotos_cocina`, consultas `lean()`, pantallas cargadas por partes (code splitting) y caché de imágenes. |
+| RNF-04 Disponibilidad | `GET /api/salud` para el monitor, reconexión automática a Atlas, cierre ordenado con SIGTERM y aviso "sin conexión" en la app. |
+| RNF-05 Imágenes | Las fotos se comprimen en el navegador (máx. 1.200 px, JPEG) antes de subirlas; el servidor rechaza las de más de 500 KB. |
+| RNF-06 Concurrencia | API sin estado (JWT), pool de hasta 50 conexiones a Atlas, límites por IP. |
+| RNF-07 Pagos | Pasarela en modo de prueba (`frontend/src/api/pasarela.js`); Kalo solo recibe la referencia y los últimos 4 dígitos y rechaza números de tarjeta (422). |
+| RNF-08 Accesibilidad | Modo alto contraste y texto grande, foco visible, etiquetas en todos los campos, "Saltar al contenido" y `prefers-reduced-motion`. |
+| RNF-09 Ley 21.719 | Botón "Eliminar mis datos" (borra cuenta, pedidos y avisos); los datos públicos nunca incluyen correo, teléfono ni salud. |
+| RNF-10 Mantenibilidad | Capas rutas → middleware → controladores → modelos, y middleware `sanitizar` contra inyección NoSQL. Cabeceras de seguridad con Helmet. |

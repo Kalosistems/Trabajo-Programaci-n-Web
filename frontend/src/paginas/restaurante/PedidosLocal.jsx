@@ -21,6 +21,7 @@ export default function PedidosLocal() {
   const [despachar, setDespachar] = useState(null);
   const [repartidores, setRepartidores] = useState([]);
   const [repartidor, setRepartidor] = useState('');
+  const [rechazar, setRechazar] = useState(null);
   const vistos = useRef(null);
 
   useEffect(() => {
@@ -76,11 +77,16 @@ export default function PedidosLocal() {
                     <Card key={p._id} className="mb-2">
                       <Card.Body className="p-3">
                         <div className="d-flex justify-content-between"><strong>#{p.codigo_pedido.split('-').pop()}</strong><small className="text-secondary">{fecha(p.fecha_pedido).split(',')[1]}</small></div>
-                        <div className="small">{p.cliente?.nombre}</div>
+                        <div className="small">{p.cliente?.nombre}{p.total_calorias > 0 && <span className="text-secondary"> · {p.total_calorias} kcal</span>}</div>
                         <ul className="small text-secondary ps-3 mb-2 mt-1">{p.detalles?.map((d) => <li key={d.platillo_id}>{d.cantidad} × {d.nombre_platillo}</li>)}</ul>
-                        <div className="d-flex justify-content-between align-items-center">
+                        <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
                           <span className="fw-semibold">{clp(p.total)}</span>
-                          {p.estado === 'Pagado' && <Button size="sm" onClick={() => cambiar(p, 'En Preparación')} disabled={enviando}>Preparar</Button>}
+                          {p.estado === 'Pagado' && (
+                            <div className="d-flex gap-1">
+                              <Button size="sm" variant="outline-danger" onClick={() => setRechazar(p)} disabled={enviando} aria-label={`Rechazar pedido ${p.codigo_pedido}`}><i className="bi bi-x-lg" /></Button>
+                              <Button size="sm" onClick={() => cambiar(p, 'En Preparación')} disabled={enviando}>Aceptar</Button>
+                            </div>
+                          )}
                           {p.estado === 'En Preparación' && <Button size="sm" variant="warning" onClick={() => abrirDespacho(p)}>Despachar</Button>}
                           {p.estado === 'En Camino' && <small className="text-secondary"><i className="bi bi-scooter me-1" />{p.repartidor_id?.nombre || 'Sin asignar'}</small>}
                           {p.estado === 'Entregado' && p.evaluacion?.calificacion_general && <small><i className="bi bi-star-fill text-warning" /> {p.evaluacion.calificacion_general}</small>}
@@ -94,6 +100,16 @@ export default function PedidosLocal() {
           })}
         </Row>
       )}
+
+      {/* Rechazar: el pedido se cancela y el pago se reembolsa */}
+      <Modal show={!!rechazar} onHide={() => setRechazar(null)} centered>
+        <Modal.Header closeButton><Modal.Title as="h2" className="h5">¿Rechazar el pedido #{rechazar?.codigo_pedido.split('-').pop()}?</Modal.Title></Modal.Header>
+        <Modal.Body>Le avisaremos a {rechazar?.cliente?.nombre} y se reembolsará su pago. Úsalo solo si no puedes preparar el pedido.</Modal.Body>
+        <Modal.Footer>
+          <Button variant="outline-secondary" onClick={() => setRechazar(null)}>Volver</Button>
+          <Button variant="danger" disabled={enviando} onClick={async () => { await cambiar(rechazar, 'Cancelado'); setRechazar(null); }}>Rechazar pedido</Button>
+        </Modal.Footer>
+      </Modal>
 
       {/* Confirmar la salida: al despachar se genera el PIN (RF-15), que solo ve el cliente */}
       <Modal show={!!despachar} onHide={() => setDespachar(null)} centered>

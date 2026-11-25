@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { api, decimal, telefonoValido, MENSAJE_TELEFONO } from '../api/cliente';
 import { useSesion, INICIO_POR_ROL } from '../contexto/Sesion';
 import { useAccion, useTitulo } from '../hooks';
+import { ACTIVIDADES, OBJETIVOS, metaCalorica } from '../utils/transparencia';
 
 const ROLES = [['cliente', 'Comprador', 'bag-heart'], ['restaurante', 'Restaurante', 'shop'], ['repartidor', 'Repartidor', 'scooter']];
 const REGLAS = [
@@ -29,7 +30,7 @@ export default function Registro() {
   const [error, setError] = useState('');
   const [d, setD] = useState({
     rol: 'cliente', nombre: '', correo: '', password: '',
-    peso: '', altura: '', edad: '', genero: 'Femenino',
+    peso: '', altura: '', edad: '', genero: 'Femenino', nivel_actividad: 'ligero', objetivo: 'mantener',
     especialidad: '', direccion: '', telefono: '', vehiculo: 'Motocicleta'
   });
   const cambiar = (k) => (e) => setD({ ...d, [k]: e.target.value });
@@ -40,6 +41,7 @@ export default function Registro() {
   const peso = parseFloat(String(d.peso).replace(',', '.'));
   const imc = peso > 0 && altura >= 1 && altura <= 2.5 ? peso / (altura * altura) : null;
   const alturaMala = d.altura !== '' && !(altura >= 1 && altura <= 2.5);
+  const meta = imc ? metaCalorica({ ...d, peso, altura }) : null;
   // Repartidor: teléfono obligatorio. Restaurante: opcional, pero si se escribe debe estar completo.
   const telMalo = (d.rol === 'repartidor' || (d.rol === 'restaurante' && d.telefono.trim() !== '')) && !telefonoValido(d.telefono);
   const telVisible = d.telefono.trim() !== '' && telMalo;
@@ -117,9 +119,24 @@ export default function Registro() {
                     <Col xs={6}><Form.Group controlId="genero"><Form.Label>Género</Form.Label>
                       <Form.Select value={d.genero} onChange={cambiar('genero')}><option>Femenino</option><option>Masculino</option><option>Otro</option></Form.Select></Form.Group></Col>
                   </Row>
+                  <Row className="g-3 mb-3">
+                    <Col xs={12} sm={6}><Form.Group controlId="act"><Form.Label>Actividad física</Form.Label>
+                      <Form.Select value={d.nivel_actividad} onChange={cambiar('nivel_actividad')}>{Object.entries(ACTIVIDADES).map(([k, [t, x]]) => <option key={k} value={k} title={x}>{t}</option>)}</Form.Select>
+                      <Form.Text>{ACTIVIDADES[d.nivel_actividad][1]}</Form.Text></Form.Group></Col>
+                    <Col xs={12} sm={6}><Form.Group controlId="obj"><Form.Label>Tu objetivo</Form.Label>
+                      <Form.Select value={d.objetivo} onChange={cambiar('objetivo')}>{Object.entries(OBJETIVOS).map(([k, [t]]) => <option key={k} value={k}>{t}</option>)}</Form.Select></Form.Group></Col>
+                  </Row>
                   {imc && (() => {
                     const [t, c] = diagnosticoImc(imc);
-                    return <Alert variant={c} className="d-flex justify-content-between"><span>Tu IMC: <strong>{decimal(imc)}</strong></span><span>{t}</span></Alert>;
+                    return (
+                      <div className="resultado-imc rounded-4 p-3">
+                        <Row className="text-center g-2">
+                          <Col xs={6}><div className="small text-secondary">Tu IMC</div><div className="fs-2 fw-800">{decimal(imc)}</div><span className={`badge bg-${c}`}>{t}</span></Col>
+                          <Col xs={6}><div className="small text-secondary">Meta sugerida</div><div className="fs-2 fw-800 text-verde">{meta?.toLocaleString('es-CL')}</div><span className="small">kcal/día</span></Col>
+                        </Row>
+                        <p className="small text-secondary mb-0 mt-2 text-center">Es una referencia, no reemplaza una indicación médica. Puedes cambiarla contratando un plan.</p>
+                      </div>
+                    );
                   })()}
                 </>
               )}

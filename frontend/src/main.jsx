@@ -8,10 +8,12 @@ import App from './App';
 import { ProveedorSesion } from './contexto/Sesion';
 import { ProveedorCarrito } from './contexto/Carrito';
 import { ProveedorAvisos } from './contexto/Avisos';
+import { ProveedorAccesibilidad } from './contexto/Accesibilidad';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter>
+      <ProveedorAccesibilidad>
       <ProveedorSesion>
         <ProveedorCarrito>
           <ProveedorAvisos>
@@ -19,6 +21,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           </ProveedorAvisos>
         </ProveedorCarrito>
       </ProveedorSesion>
+      </ProveedorAccesibilidad>
     </BrowserRouter>
   </React.StrictMode>
 );

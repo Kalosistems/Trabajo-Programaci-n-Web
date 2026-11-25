@@ -12,11 +12,19 @@ const conectarMongo = async () => {
         return;
     }
     try {
-        await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 8000 });
+        // maxPoolSize: hasta 50 conexiones simultáneas a Atlas para atender muchos usuarios a la vez (RNF-06)
+        await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 8000, maxPoolSize: 50 });
         console.log(`✅ Conectado a MongoDB. Base de datos: [${mongoose.connection.name}]`);
     } catch (error) {
         console.error('❌ Error conectando a MongoDB:', error.message);
     }
 };
 
-module.exports = { conectarMongo, mongoose };
+// Si Atlas se desconecta, Mongoose reintenta solo; aquí solo se deja registro (RNF-04)
+mongoose.connection.on('disconnected', () => console.warn('⚠️  Se perdió la conexión con MongoDB. Reintentando…'));
+mongoose.connection.on('reconnected', () => console.log('✅ Reconectado a MongoDB'));
+
+const ESTADOS = ['desconectada', 'conectada', 'conectando', 'desconectando'];
+const estadoConexion = () => ESTADOS[mongoose.connection.readyState] || 'desconocida';
+
+module.exports = { conectarMongo, mongoose, estadoConexion };
