@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Badge, Button, Card, Nav, Spinner } from 'react-bootstrap';
+import { Alert, Badge, Button, Card, Form, Nav, Spinner } from 'react-bootstrap';
 import { api, clp, fecha } from '../../api/cliente';
 import { useSesion } from '../../contexto/Sesion';
 import { useAvisos } from '../../contexto/Avisos';
@@ -14,6 +14,15 @@ function ValidarPin({ pedido, alTerminar }) {
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
   const tocar = (d) => { setError(''); setPin((p) => (p.length < 4 ? p + d : p)); };
+  const [avisado, setAvisado] = useState(!!pedido.aviso_cercano_en);
+
+  // RF-23: avisa al cliente que el repartidor llega en 5 minutos o menos (sin mostrar el PIN)
+  const avisarCerca = async () => {
+    try {
+      const r = await ejecutar(() => api.avisarCerca(pedido.codigo_pedido));
+      setAvisado(true); avisar(r.mensaje);
+    } catch (e) { avisar(e.message, 'error'); }
+  };
 
   const validar = async () => {
     try {
@@ -28,6 +37,10 @@ function ValidarPin({ pedido, alTerminar }) {
         <div className="d-flex justify-content-between"><strong>Pedido #{pedido.codigo_pedido.split('-').pop()}</strong><EstadoPedido estado={pedido.estado} /></div>
         <div className="small mt-1"><i className="bi bi-person me-1" />{pedido.cliente?.nombre} · <a href={`tel:${pedido.cliente?.telefono}`}>{pedido.cliente?.telefono}</a></div>
         <div className="small text-secondary"><i className="bi bi-shop me-1" />{pedido.restaurante_id?.nombre} · {pedido.restaurante_id?.direccion}</div>
+        <div className="small text-secondary"><i className="bi bi-bag me-1" />{pedido.detalles?.map((d) => `${d.cantidad} × ${d.nombre_platillo}`).join(' · ')}</div>
+        <Button variant={avisado ? 'outline-success' : 'success'} className="w-100 mt-3" onClick={avisarCerca} disabled={avisado || enviando}>
+          <i className={`bi bi-${avisado ? 'check2' : 'geo-alt-fill'} me-1`} />{avisado ? 'El cliente sabe que llegas pronto' : 'Estoy a 5 minutos: avisar al cliente'}
+        </Button>
         <hr />
         <p className="text-center fw-semibold mb-2">Pide el PIN al cliente</p>
         <div className={`digitos mb-2 ${error ? 'error' : ''}`} aria-live="polite" aria-label={`${pin.length} de 4 dígitos ingresados`}>
@@ -56,6 +69,15 @@ export default function Reparto() {
   const [pestana, setPestana] = useState('mios');
   const [activo, setActivo] = useState(null);
   const { datos, error, cargando, recargar } = useCarga(() => api.pedidos(), [], { cadaMs: 15000 });
+  const [disponible, setDisponible] = useState(usuario?.estado !== 'Desconectado');
+  const { actualizarUsuario } = useSesion();
+
+  const cambiarDisponible = async (valor) => {
+    try {
+      const r = await api.disponibilidad(valor ? 'Disponible' : 'Desconectado');
+      setDisponible(valor); actualizarUsuario({ estado: r.estado }); avisar(r.mensaje);
+    } catch (e) { avisar(e.message, 'error'); }
+  };
 
   const todos = datos || [];
   const mios = todos.filter((p) => String(p.repartidor_id?._id) === String(usuario?.id) && p.estado === 'En Camino');
@@ -75,6 +97,13 @@ export default function Reparto() {
   return (
     <>
       <h1 className="h4 mb-3">Hola, {usuario?.nombre?.split(' ')[0]}</h1>
+      <Card className={`mb-3 border-0 ${disponible ? 'bg-verde-claro' : 'bg-light'}`}>
+        <Card.Body className="d-flex justify-content-between align-items-center py-2">
+          <div><div className="fw-semibold">{disponible ? 'Disponible' : 'Desconectado'}</div>
+            <small className="text-secondary">{disponible ? 'Los locales pueden asignarte pedidos' : 'No recibirás pedidos nuevos'}</small></div>
+          <Form.Check type="switch" id="disponible" className="fs-4" checked={disponible} onChange={(e) => cambiarDisponible(e.target.checked)} aria-label="Estoy disponible" />
+        </Card.Body>
+      </Card>
       <Nav variant="pills" className="mb-3 nav-fill bg-white rounded-3 p-1 border" activeKey={pestana} onSelect={(k) => { setPestana(k); setActivo(null); }}>
         <Nav.Item><Nav.Link eventKey="mios">En ruta <Badge bg="warning" text="dark" pill>{mios.length}</Badge></Nav.Link></Nav.Item>
         <Nav.Item><Nav.Link eventKey="libres">Disponibles <Badge bg="secondary" pill>{libres.length}</Badge></Nav.Link></Nav.Item>

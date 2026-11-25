@@ -65,25 +65,43 @@ export const api = {
   // Catálogo (público)
   platillos: (filtros) => pedir('GET', `/mongo/platillos${qs(filtros)}`),
   planes: (precioMin) => pedir('GET', `/mongo/planes${qs({ precioMin })}`),
+  restaurantes: () => pedir('GET', '/mongo/restaurantes'),
+  restaurante: (id) => pedir('GET', `/mongo/restaurantes/${id}`),
+  alimentos: () => pedir('GET', '/mongo/nutricion/alimentos'),
+  calcularNutricion: (datos) => pedir('POST', '/mongo/nutricion/calcular', datos),
+
+  // Avisos (todos los roles)
+  notificaciones: () => pedir('GET', '/mongo/notificaciones'),
+  marcarLeidas: (ids) => pedir('PUT', '/mongo/notificaciones/leidas', ids ? { ids } : {}),
 
   // Pedidos (cada rol ve los suyos)
   pedidos: (estado) => pedir('GET', `/mongo/pedidos${qs({ estado })}`),
 
   // Cliente
-  crearPedido: (items) => pedir('POST', '/mongo/pedidos', { items }),
+  crearPedido: (items, pago) => pedir('POST', '/mongo/pedidos', { items, pago }),
+  consumo: () => pedir('GET', '/mongo/usuarios/consumo'),
+  contratarPlan: (plan_id, pago) => pedir('POST', '/mongo/planes/contratar', { plan_id, pago }),
+  cancelarPlan: () => pedir('DELETE', '/mongo/planes/contrato'),
   evaluar: (datos) => pedir('POST', '/mongo/pedidos/evaluar', datos),
   actualizarPerfil: (datos) => pedir('PUT', '/mongo/usuarios/biometrico', datos),
   eliminarCuenta: (id) => pedir('DELETE', `/mongo/usuarios/${id}`),
 
   // Restaurante
   crearPlatillo: (datos) => pedir('POST', '/mongo/platillos', datos),
+  misPlatillos: () => pedir('GET', '/mongo/platillos/mios'),
+  estadoPlatillo: (id, activo) => pedir('PUT', `/mongo/platillos/${id}/estado`, { activo }),
+  miLocal: () => pedir('GET', '/mongo/restaurantes/mi-local'),
+  subirFotoCocina: (datos) => pedir('POST', '/mongo/restaurantes/fotos', datos),
+  eliminarFotoCocina: (id) => pedir('DELETE', `/mongo/restaurantes/fotos/${id}`),
   cambiarEstado: (codigo_pedido, nuevo_estado, repartidor_id) => pedir('PUT', '/mongo/pedidos/estado', { codigo_pedido, nuevo_estado, repartidor_id }),
   repartidores: () => pedir('GET', '/mongo/repartidores'),
   actualizarLocal: (datos) => pedir('PUT', '/mongo/restaurantes/mi-local', datos),
 
   // Repartidor
   aceptar: (codigo_pedido) => pedir('PUT', '/mongo/pedidos/aceptar', { codigo_pedido }),
-  validarPin: (codigo_pedido, pin_ingresado) => pedir('POST', '/mongo/pedidos/validar-pin', { codigo_pedido, pin_ingresado })
+  validarPin: (codigo_pedido, pin_ingresado) => pedir('POST', '/mongo/pedidos/validar-pin', { codigo_pedido, pin_ingresado }),
+  avisarCerca: (codigo_pedido) => pedir('PUT', '/mongo/pedidos/cerca', { codigo_pedido }),
+  disponibilidad: (estado) => pedir('PUT', '/mongo/repartidores/disponibilidad', { estado })
 };
 
 // Teléfono: exactamente 11 dígitos (se permite "+" al inicio y espacios o guiones al escribir)

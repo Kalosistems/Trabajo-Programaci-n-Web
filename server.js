@@ -8,7 +8,10 @@ const path = require('path');
 const fs = require('fs');
 const express = require('express');
 const cors = require('cors');
-const { conectarMongo } = require('./src/config/mongo');
+const helmet = require('helmet');
+const compression = require('compression');
+const { conectarMongo, estadoConexion } = require('./src/config/mongo');
+const { sanitizar } = require('./src/middleware/sanitizar');
 const { limiteGeneral } = require('./src/middleware/limites');
 const { manejarErrores, rutaNoEncontrada } = require('./src/middleware/errores');
 const authRoutes = require('./src/Rutas/authRoutes');
@@ -23,16 +26,44 @@ conectarMongo();
 
 // Middlewares
 app.disable('x-powered-by');
+app.set('trust proxy', 1);                   // Railway pone un proxy delante: la IP real viene en X-Forwarded-For
+// Cabeceras de seguridad (Helmet): solo se cargan scripts propios; imágenes propias, data: o https
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'"],
+            styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+            fontSrc: ["'self'", 'data:', 'https://fonts.gstatic.com'],
+            imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
+            connectSrc: ["'self'"],
+            upgradeInsecureRequests: null // en localhost se usa http; Railway ya entrega HTTPS
+        }
+    },
+    crossOriginEmbedderPolicy: false
+}));
+app.use(compression());                      // gzip: el catálogo pesa ~70 % menos (RNF-03)
 app.use(cors({ origin: process.env.CORS_ORIGEN || true }));
-// Crear platillo admite hasta 1 MB porque lleva la foto subida (ya comprimida en el navegador)
-app.use('/api/mongo/platillos', express.json({ limit: '1mb' }));
+// Las rutas que reciben fotos (platillo y cocina) admiten hasta 1 MB: la foto ya viene comprimida
+app.use(['/api/mongo/platillos', '/api/mongo/restaurantes/fotos'], express.json({ limit: '1mb' }));
 app.use(express.json({ limit: '100kb' }));   // límite del cuerpo del resto de las solicitudes
 
 // Frontend en React + Bootstrap, compilado con "npm run build" en frontend/dist
 const FRONT = path.join(__dirname, 'frontend', 'dist');
 app.use(express.static(FRONT, { index: false, maxAge: '1h' }));
 
+// Estado del servicio (RNF-04): lo consulta el monitor de disponibilidad de Railway / UptimeRobot.
+// Va antes del límite de solicitudes para que el monitor nunca reciba 429.
+app.get('/api/salud', (req, res) => {
+    const bd = estadoConexion();
+    res.status(bd === 'conectada' ? 200 : 503).json({
+        exito: bd === 'conectada', servicio: 'kalo-api', base_de_datos: bd,
+        activo_desde_s: Math.round(process.uptime()), fecha: new Date().toISOString()
+    });
+});
+
 // API REST (todas las rutas bajo /api)
+app.use('/api', sanitizar);                  // rechaza claves "$..." (inyección NoSQL)
 app.use('/api', limiteGeneral);              // 300 solicitudes por IP cada 15 minutos
 app.use('/api', authRoutes);                 // /api/login y /api/registro
 app.use('/api/mongo', mongoRoutes);          // recursos de MongoDB Atlas
@@ -49,6 +80,15 @@ app.use((req, res, next) => {
 app.use(manejarErrores);                     // 400 JSON mal formado, 413, 500
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+const servidor = app.listen(PORT, () => {
     console.log(`Servidor Kalo corriendo en http://localhost:${PORT}`);
+});
+
+// Disponibilidad (RNF-04): un error inesperado se registra y no apaga el servidor,
+// y al detenerlo (redeploy en Railway) se terminan las solicitudes en curso.
+process.on('unhandledRejection', (e) => console.error('Promesa rechazada sin manejar:', e));
+process.on('SIGTERM', () => {
+    console.log('Cerrando el servidor…');
+    servidor.close(() => process.exit(0));
+    setTimeout(() => process.exit(0), 10000).unref();
 });

@@ -1,9 +1,11 @@
-import { Alert, Button, Card, Col, ListGroup, Row, Spinner } from 'react-bootstrap';
+import { useState } from 'react';
+import { Alert, Button, Card, Col, ListGroup, Row } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
 import { api, clp } from '../../api/cliente';
 import { useCarrito } from '../../contexto/Carrito';
 import { useAvisos } from '../../contexto/Avisos';
-import { useAccion, useTitulo } from '../../hooks';
+import { useTitulo } from '../../hooks';
+import PasarelaPago from '../../componentes/PasarelaPago';
 import { Vacio } from '../../componentes/Estados';
 import { ImagenPlatillo } from '../../componentes/Insignias';
 
@@ -14,7 +16,7 @@ export default function Carrito() {
   const c = useCarrito();
   const avisar = useAvisos();
   const navegar = useNavigate();
-  const { enviando, ejecutar } = useAccion();
+  const [pagando, setPagando] = useState(false);
 
   if (!c.items.length) {
     return (
@@ -24,15 +26,17 @@ export default function Carrito() {
     );
   }
 
-  const pagar = async () => {
+  // 1) La pasarela autoriza el pago (RNF-07) · 2) se crea el pedido con la referencia del pago.
+  // El servidor calcula el total con los precios guardados; solo se envían id y cantidad.
+  const crearPedido = async (comprobante) => {
     try {
-      // El servidor calcula el total con los precios guardados; solo se envían id y cantidad
-      const r = await ejecutar(() => api.crearPedido(c.items.map((i) => ({ platillo_id: i.platillo._id, cantidad: i.cantidad }))));
+      const r = await api.crearPedido(c.items.map((i) => ({ platillo_id: i.platillo._id, cantidad: i.cantidad })), comprobante);
+      setPagando(false);
       c.vaciar();
       avisar(r.mensaje);
       navegar('/pedidos', { state: { codigo: r.pedido.codigo_pedido } });
     } catch (e) {
-      avisar(e.message, 'error');
+      throw new Error(`${e.message} No se hizo ningún cobro definitivo.`);
     }
   };
 
@@ -71,13 +75,14 @@ export default function Carrito() {
             <hr />
             <div className="d-flex justify-content-between fs-5 fw-bold mb-2"><span>Total</span><span>{clp(c.subtotal + ENVIO)}</span></div>
             <Alert variant="success" className="small py-2"><i className="bi bi-fire me-1" />Este pedido suma <strong>{c.kcal.toLocaleString('es-CL')} kcal</strong>.</Alert>
-            <Button size="lg" className="w-100" onClick={pagar} disabled={enviando}>
-              {enviando ? <><Spinner size="sm" className="me-2" />Procesando…</> : <>Ir a pagar · {clp(c.subtotal + ENVIO)}</>}
+            <Button size="lg" className="w-100" onClick={() => setPagando(true)}>
+              <i className="bi bi-credit-card me-2" />Ir a pagar · {clp(c.subtotal + ENVIO)}
             </Button>
             <p className="small text-secondary mt-2 mb-0"><i className="bi bi-shield-lock me-1" />Verás tu PIN de entrega cuando el pedido salga del local.</p>
           </Card.Body>
         </Card>
       </Col>
+      <PasarelaPago show={pagando} monto={c.subtotal + ENVIO} concepto={`Pedido en ${c.restaurante?.nombre || 'Kalo'}`} alCerrar={() => setPagando(false)} alPagar={crearPedido} />
     </Row>
   );
 }

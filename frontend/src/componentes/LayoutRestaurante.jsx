@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Button, Nav, Navbar, Offcanvas } from 'react-bootstrap';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useSesion } from '../contexto/Sesion';
+import Campana from './Campana';
+import { BotonAccesibilidad } from '../contexto/Accesibilidad';
 
 const ENLACES = [
   { a: '/local/pedidos', icono: 'kanban', texto: 'Pedidos entrantes' },
@@ -44,11 +46,13 @@ export default function LayoutRestaurante() {
             <i className="bi bi-list fs-3" />
           </Button>
           <span className="logo logo-blanco">kalo</span>
+          <div className="ms-auto d-flex gap-1"><BotonAccesibilidad claro /><Campana claro /></div>
         </Navbar>
         <Offcanvas show={abierto} onHide={() => setAbierto(false)} className="bg-primary" style={{ width: 270 }}>
           <Menu alElegir={() => setAbierto(false)} />
         </Offcanvas>
-        <main id="contenido" className="p-3 p-md-4"><Outlet /></main>
+        <div className="d-none d-lg-flex justify-content-end gap-1 px-4 pt-3"><BotonAccesibilidad /><Campana /></div>
+        <main id="contenido" className="p-3 p-md-4 pt-lg-0"><Outlet /></main>
       </div>
     </div>
   );

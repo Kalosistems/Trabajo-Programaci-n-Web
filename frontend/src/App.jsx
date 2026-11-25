@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useSesion, INICIO_POR_ROL } from './contexto/Sesion';
 import { Cargando } from './componentes/Estados';
+import { AvisoSinConexion } from './contexto/Accesibilidad';
 import LayoutCliente from './componentes/LayoutCliente';
 import LayoutRestaurante from './componentes/LayoutRestaurante';
 import LayoutRepartidor from './componentes/LayoutRepartidor';
@@ -15,6 +16,8 @@ const Explorar = lazy(() => import('./paginas/cliente/Explorar'));
 const Carrito = lazy(() => import('./paginas/cliente/Carrito'));
 const MisPedidos = lazy(() => import('./paginas/cliente/MisPedidos'));
 const Perfil = lazy(() => import('./paginas/cliente/Perfil'));
+const Restaurantes = lazy(() => import('./paginas/cliente/Restaurantes'));
+const PerfilLocal = lazy(() => import('./paginas/cliente/PerfilLocal'));
 const PedidosLocal = lazy(() => import('./paginas/restaurante/PedidosLocal'));
 const Platillos = lazy(() => import('./paginas/restaurante/Platillos'));
 const NuevoPlatillo = lazy(() => import('./paginas/restaurante/NuevoPlatillo'));
@@ -35,6 +38,7 @@ export default function App() {
   return (
     <>
       <a href="#contenido" className="visually-hidden-focusable btn btn-warning">Saltar al contenido</a>
+      <AvisoSinConexion />
       <Suspense fallback={<Cargando />}>
         <Routes>
           <Route path="/" element={<Bienvenida />} />
@@ -46,6 +50,8 @@ export default function App() {
             <Route path="/carrito" element={<Carrito />} />
             <Route path="/pedidos" element={<MisPedidos />} />
             <Route path="/perfil" element={<Perfil />} />
+            <Route path="/locales" element={<Restaurantes />} />
+            <Route path="/locales/:id" element={<PerfilLocal />} />
           </Route>
 
           <Route element={<SoloRol rol="restaurante"><LayoutRestaurante /></SoloRol>}>

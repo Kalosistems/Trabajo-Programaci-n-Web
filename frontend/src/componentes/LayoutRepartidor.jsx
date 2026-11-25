@@ -1,6 +1,8 @@
 import { Button, Container, Navbar } from 'react-bootstrap';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { useSesion } from '../contexto/Sesion';
+import Campana from './Campana';
+import { BotonAccesibilidad } from '../contexto/Accesibilidad';
 
 // Repartidor: pensado para el celular (valida el PIN en la puerta del cliente)
 export default function LayoutRepartidor() {
@@ -14,6 +16,8 @@ export default function LayoutRepartidor() {
           <div className="d-flex align-items-center gap-2 text-white small">
             <i className="bi bi-scooter fs-5" aria-hidden="true" />
             <span className="d-none d-sm-inline">{usuario?.nombre}</span>
+            <BotonAccesibilidad claro />
+            <Campana claro />
             <Button size="sm" variant="outline-light" onClick={() => { salir(); navegar('/'); }} aria-label="Cerrar sesión">
               <i className="bi bi-box-arrow-right" />
             </Button>

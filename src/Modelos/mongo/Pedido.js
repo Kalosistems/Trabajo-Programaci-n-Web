@@ -14,7 +14,19 @@ const DetallePlatilloSchema = new mongoose.Schema({
     nombre_platillo: { type: String, required: true },
     cantidad: { type: Number, required: true, min: 1 },
     precio_unitario: { type: Number, required: true },
-    subtotal: { type: Number, required: true }
+    subtotal: { type: Number, required: true },
+    calorias: { type: Number, default: 0 } // kcal por unidad al momento de la compra (RF-03)
+}, { _id: false });
+
+// Pago (RNF-07): el pago lo procesa una pasarela externa. Kalo solo guarda la referencia
+// que devuelve la pasarela, la marca y los últimos 4 dígitos; NUNCA el número de la tarjeta.
+const PagoSchema = new mongoose.Schema({
+    metodo: { type: String, enum: ['credito', 'debito'], default: 'credito' },
+    marca: { type: String, default: 'Tarjeta' },
+    ultimos4: { type: String, match: /^\d{4}$/ },
+    referencia: { type: String, required: true },
+    estado: { type: String, enum: ['Aprobado', 'Reembolsado'], default: 'Aprobado' },
+    fecha: { type: Date, default: Date.now }
 }, { _id: false });
 
 // Subdocumento para Snapshot Histórico de Plan Nutricional
@@ -40,6 +52,13 @@ const PedidoSchema = new mongoose.Schema({
         enum: ['Pendiente', 'Pagado', 'En Preparación', 'En Camino', 'Entregado', 'Cancelado'],
         default: 'Pagado'
     },
+    // "platillos": pedido de comida · "plan": contratación de un plan nutricional (RF-21)
+    tipo: { type: String, enum: ['platillos', 'plan'], default: 'platillos' },
+    pago: { type: PagoSchema, default: null },
+    total_calorias: { type: Number, default: 0 },
+    despachado_en: { type: Date, default: null },
+    aviso_cercano_en: { type: Date, default: null }, // RF-23: el repartidor avisó que está a ≤ 5 min
+    entregado_en: { type: Date, default: null },
     // PIN de entrega (RF-15): se genera cuando el restaurante despacha el pedido,
     // no al pagar. Solo lo ve el cliente dueño del pedido.
     pin_seguridad: { 
@@ -54,7 +73,7 @@ const PedidoSchema = new mongoose.Schema({
         type: Number, 
         min: 1, 
         max: 5, 
-        default: 5 
+        default: null
     },
     evaluacion: {
         similitud_foto: { type: Number, min: 1, max: 5 },

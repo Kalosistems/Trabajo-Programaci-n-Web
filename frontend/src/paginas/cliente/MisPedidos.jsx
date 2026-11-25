@@ -25,6 +25,17 @@ function Pasos({ estado }) {
 }
 
 function Seguimiento({ pedido, alEvaluar }) {
+  if (pedido.tipo === 'plan') {
+    const pl = pedido.plan_adquirido || {};
+    return (
+      <Card className="shadow-sm"><Card.Body>
+        <small className="text-secondary">Contratación {pedido.codigo_pedido}</small>
+        <h2 className="h5"><i className="bi bi-clipboard2-heart text-verde me-2" />Plan {pl.nombre_plan}</h2>
+        <p className="mb-2">{pl.calorias_diarias?.toLocaleString('es-CL')} kcal al día · USD {pl.precio_historico}/mes</p>
+        {pedido.pago && <p className="small text-secondary mb-0"><i className="bi bi-credit-card me-1" />{pedido.pago.marca} •••• {pedido.pago.ultimos4} · {pedido.pago.estado}</p>}
+      </Card.Body></Card>
+    );
+  }
   return (
     <Card className="shadow-sm">
       <Card.Body>
@@ -37,6 +48,9 @@ function Seguimiento({ pedido, alEvaluar }) {
         </div>
         {pedido.estado === 'Cancelado' ? <p className="text-danger mt-3">Este pedido fue cancelado por el local.</p> : <Pasos estado={pedido.estado} />}
 
+        {pedido.estado === 'Pagado' && (
+          <div className="bg-light border rounded-3 p-3 small"><i className="bi bi-hourglass me-1" />Pago aprobado. Esperando que el local acepte tu pedido.</div>
+        )}
         {pedido.estado === 'En Preparación' && (
           <div className="bg-verde-claro rounded-3 p-3 small"><i className="bi bi-hourglass-split me-1" />El local está preparando tu comida. Verás tu PIN cuando salga.</div>
         )}
@@ -45,6 +59,7 @@ function Seguimiento({ pedido, alEvaluar }) {
             <div className="small fw-semibold text-warning-emphasis"><i className="bi bi-shield-lock-fill me-1" />Tu PIN de entrega</div>
             <div className="pin-grande my-1" aria-label={`PIN ${pedido.pin_seguridad?.split('').join(' ')}`}>{pedido.pin_seguridad || '----'}</div>
             <div className="small">Díctaselo al repartidor solo cuando tengas tu pedido en la mano.</div>
+            {pedido.aviso_cercano_en && <div className="alert alert-success py-1 small mt-2 mb-0"><i className="bi bi-geo-alt-fill me-1" />Tu repartidor está a 5 minutos o menos</div>}
             {pedido.repartidor_id && <div className="small mt-2"><i className="bi bi-scooter me-1" />{pedido.repartidor_id.nombre} · {pedido.repartidor_id.vehiculo}</div>}
           </div>
         )}
@@ -63,6 +78,10 @@ function Seguimiento({ pedido, alEvaluar }) {
           <ListGroup.Item className="d-flex justify-content-between px-0"><span>Envío</span><span>{clp(1490)}</span></ListGroup.Item>
           <ListGroup.Item className="d-flex justify-content-between px-0 fw-bold"><span>Total pagado</span><span>{clp(pedido.total)}</span></ListGroup.Item>
         </ListGroup>
+        <div className="d-flex justify-content-between small text-secondary mt-2 flex-wrap gap-2">
+          {pedido.total_calorias > 0 && <span><i className="bi bi-fire text-warning me-1" />{pedido.total_calorias.toLocaleString('es-CL')} kcal</span>}
+          {pedido.pago && <span><i className="bi bi-credit-card me-1" />{pedido.pago.marca} •••• {pedido.pago.ultimos4}{pedido.pago.estado === 'Reembolsado' ? ' · Reembolsado' : ''}</span>}
+        </div>
       </Card.Body>
     </Card>
   );
@@ -78,7 +97,8 @@ const CRITERIOS = [
 export default function MisPedidos() {
   useTitulo('Mis pedidos');
   const avisar = useAvisos();
-  const codigoNuevo = useLocation().state?.codigo;
+  const estadoNav = useLocation().state || {};
+  const codigoNuevo = estadoNav.codigo;
   const [filtro, setFiltro] = useState('curso');
   const [elegido, setElegido] = useState(codigoNuevo || null);
   const [evaluando, setEvaluando] = useState(null);
@@ -89,11 +109,32 @@ export default function MisPedidos() {
   const { datos, error, cargando, recargar } = useCarga(() => api.pedidos(), [], { cadaMs: 10000 });
 
   const pedidos = datos || [];
-  const enCurso = pedidos.filter((p) => !['Entregado', 'Cancelado'].includes(p.estado));
-  const lista = filtro === 'curso' ? enCurso : pedidos.filter((p) => ['Entregado', 'Cancelado'].includes(p.estado));
+  const terminado = (p) => p.tipo === 'plan' || ['Entregado', 'Cancelado'].includes(p.estado);
+  const enCurso = pedidos.filter((p) => !terminado(p));
+  const lista = filtro === 'curso' ? enCurso : pedidos.filter(terminado);
   const actual = pedidos.find((p) => p.codigo_pedido === elegido) || lista[0];
 
   useEffect(() => { if (!cargando && !enCurso.length && filtro === 'curso' && pedidos.length) setFiltro('historial'); }, [cargando]); // eslint-disable-line
+
+  // RF-12: cuando llega el aviso "pedido entregado" (o se abre desde la campana), se abre la evaluación
+  const abrirEvaluacion = (codigo) => {
+    const p = (datos || []).find((x) => x.codigo_pedido === codigo);
+    if (p && p.estado === 'Entregado' && !p.evaluacion?.calificacion_general) {
+      setFiltro('historial'); setElegido(codigo); setEvaluando(p); setNotas({}); setComentario('');
+    }
+  };
+  useEffect(() => { if (estadoNav.evaluar && datos) abrirEvaluacion(estadoNav.evaluar); }, [estadoNav.evaluar, !!datos]); // eslint-disable-line
+  useEffect(() => {
+    const alAviso = async (e) => {
+      const lista = await recargar(true);
+      if (e.detail.tipo === 'evaluar' && lista) {
+        const p = lista.find((x) => x.codigo_pedido === e.detail.codigo_pedido);
+        if (p && !p.evaluacion?.calificacion_general) { setFiltro('historial'); setElegido(p.codigo_pedido); setEvaluando(p); setNotas({}); setComentario(''); }
+      }
+    };
+    window.addEventListener('kalo:aviso', alAviso);
+    return () => window.removeEventListener('kalo:aviso', alAviso);
+  }, [recargar]);
 
   const enviarEvaluacion = async () => {
     try {
@@ -122,7 +163,7 @@ export default function MisPedidos() {
             <ListGroup>
               {lista.map((p) => (
                 <ListGroup.Item key={p._id} action active={actual?._id === p._id} onClick={() => setElegido(p.codigo_pedido)} className="d-flex justify-content-between align-items-center">
-                  <div><div className="fw-semibold">{p.restaurante_id?.nombre}</div><small>{fecha(p.fecha_pedido)} · {clp(p.total)}</small></div>
+                  <div><div className="fw-semibold">{p.tipo === 'plan' ? <><i className="bi bi-clipboard2-heart me-1" />Plan {p.plan_adquirido?.nombre_plan}</> : p.restaurante_id?.nombre}</div><small>{fecha(p.fecha_pedido)} · {p.tipo === 'plan' ? `USD ${p.total}` : clp(p.total)}</small></div>
                   <EstadoPedido estado={p.estado} />
                 </ListGroup.Item>
               ))}
@@ -134,8 +175,9 @@ export default function MisPedidos() {
 
       {/* Evaluación post-entrega (RF-12, RF-13) */}
       <Modal show={!!evaluando} onHide={() => setEvaluando(null)} centered>
-        <Modal.Header closeButton><Modal.Title as="h2" className="h5">Evaluar pedido</Modal.Title></Modal.Header>
+        <Modal.Header closeButton><Modal.Title as="h2" className="h5">¿Cómo estuvo tu pedido?</Modal.Title></Modal.Header>
         <Modal.Body>
+          <p className="small text-secondary">{evaluando?.restaurante_id?.nombre} · {evaluando?.codigo_pedido}. Tu opinión actualiza el Índice de Transparencia del local.</p>
           {CRITERIOS.map(([k, t]) => (
             <div key={k} className="d-flex justify-content-between align-items-center mb-2 flex-wrap">
               <span className="small fw-semibold">{t}</span>

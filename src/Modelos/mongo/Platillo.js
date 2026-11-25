@@ -8,8 +8,9 @@ const MacronutrientesSchema = new mongoose.Schema({
 
 const IngredienteDetalleSchema = new mongoose.Schema({
     nombre: { type: String, required: true },
-    cantidad_g: { type: Number, default: 0 },
-    metodo_coccion: { type: String, default: 'Fresco' }
+    cantidad_g: { type: Number, default: 0 },          // cantidad exacta (RF-06)
+    unidad: { type: String, enum: ['g', 'ml'], default: 'g' },
+    metodo_coccion: { type: String, default: 'Sin especificar' }
 }, { _id: false });
 
 const PlatilloSchema = new mongoose.Schema({
@@ -62,8 +63,10 @@ const PlatilloSchema = new mongoose.Schema({
         type: Number,
         min: 1,
         max: 100,
-        default: 85
+        default: 20
     },
+    // true si las calorías y macros los calculó Kalo a partir de los ingredientes (RF-08)
+    nutricion_calculada: { type: Boolean, default: false },
     restaurante_id: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Restaurante'
@@ -76,5 +79,9 @@ const PlatilloSchema = new mongoose.Schema({
     timestamps: true,
     collection: 'platillos'
 });
+
+// Catálogo: platillos activos ordenados por transparencia (RNF-03)
+PlatilloSchema.index({ activo: 1, indice_transparencia: -1, precio: 1 });
+PlatilloSchema.index({ restaurante_id: 1, activo: 1 });
 
 module.exports = mongoose.model('Platillo', PlatilloSchema);

@@ -11,6 +11,7 @@ const Repartidor = require('../Modelos/mongo/Repartidor');
 const { mongoose } = require('../config/mongo');
 const { firmarToken, EXPIRA } = require('../middleware/auth');
 const { normalizarTelefono, telefonoValido, MENSAJE_TELEFONO } = require('../utils/telefono');
+const { armarPerfil, perfilPublico } = require('../utils/perfil');
 
 const COSTO_BCRYPT = 10;
 const CORREO_VALIDO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -32,9 +33,12 @@ function verificarConexionAtlas(res) {
 // Datos públicos de cada tipo de cuenta (sin password_hash)
 function datosPublicos(doc, rol) {
     const base = { id: doc._id, nombre: doc.nombre, correo: doc.correo, telefono: doc.telefono, rol };
-    if (rol === 'cliente') return { ...base, perfil_biometrico: doc.perfil_biometrico };
+    if (rol === 'cliente') return { ...base, perfil_biometrico: perfilPublico(doc), plan_activo: doc.plan_activo || null };
     if (rol === 'restaurante') {
-        return { ...base, direccion: doc.direccion, especialidad: doc.especialidad, calificacion_promedio: doc.calificacion_promedio };
+        return {
+            ...base, direccion: doc.direccion, especialidad: doc.especialidad, calificacion_promedio: doc.calificacion_promedio,
+            indice_transparencia: doc.indice_transparencia, total_evaluaciones: doc.total_evaluaciones
+        };
     }
     return { ...base, vehiculo: doc.vehiculo, estado: doc.estado, calificacion: doc.calificacion };
 }
@@ -93,7 +97,7 @@ exports.registro = async (req, res) => {
     try {
         const {
             rol = 'cliente', nombre, correo, password,
-            peso, altura, edad, genero,
+            peso, altura, edad, genero, nivel_actividad, objetivo,
             especialidad, direccion, telefono, vehiculo
         } = req.body || {};
 
@@ -153,24 +157,15 @@ exports.registro = async (req, res) => {
             return respuestaSesion(res, 201, '¡Repartidor registrado!', datosPublicos(nuevo, 'repartidor'));
         }
 
-        // Cliente con perfil biométrico
-        const pesoKg = parseFloat(peso);
-        const alturaM = parseFloat(altura);
-        const edadN = parseInt(edad, 10);
-        if (!(pesoKg >= 20 && pesoKg <= 350) || !(alturaM >= 1 && alturaM <= 2.5) || !(edadN >= 12 && edadN <= 110)) {
-            return error(res, 422, 'BIOMETRIA_INVALIDA', 'Revisa tus datos: peso entre 20 y 350 kg, altura entre 1,00 y 2,50 m y edad entre 12 y 110 años.');
-        }
-        const imc = parseFloat((pesoKg / (alturaM * alturaM)).toFixed(1));
-        const meta = genero === 'Masculino' ? 2200 : 1800;
+        // Cliente con perfil biométrico: IMC (RF-02) y meta calórica con Mifflin-St Jeor (RF-03).
+        // Los datos de salud quedan cifrados en la base (RNF-02).
+        const { perfil, error: errorPerfil } = armarPerfil({ peso, altura, edad, genero, nivel_actividad, objetivo });
+        if (errorPerfil) return error(res, 422, 'BIOMETRIA_INVALIDA', errorPerfil);
 
         const nuevo = await Usuario.create({
             nombre: nombre.trim(), correo: correoNormalizado, password_hash,
             telefono: telefonoNormalizado,
-            perfil_biometrico: {
-                peso_kg: pesoKg, altura_m: alturaM, edad: edadN,
-                genero: ['Masculino', 'Femenino', 'Otro'].includes(genero) ? genero : 'Otro',
-                imc, meta_calorica_diaria: meta, objetivo_salud: 'Nutrición balanceada'
-            }
+            perfil_biometrico: perfil
         });
         return respuestaSesion(res, 201, '¡Cuenta creada!', datosPublicos(nuevo, 'cliente'));
     } catch (e) {
@@ -184,3 +179,5 @@ exports.registro = async (req, res) => {
         return error(res, 500, 'ERROR_INTERNO', 'No pudimos crear la cuenta. Intenta de nuevo.');
     }
 };
+
+exports.datosPublicos = datosPublicos;

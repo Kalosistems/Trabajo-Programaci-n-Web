@@ -102,3 +102,68 @@
 /* Accesibilidad: foco visible */
 a:focus-visible, button:focus-visible { outline: 3px solid var(--kalo-naranjo); outline-offset: 2px; }
 .visually-hidden-focusable:focus { position: fixed; top: .5rem; left: .5rem; z-index: 3000; }
+
+/* ── Etapa 3: piezas nuevas ─────────────────────────────────────────── */
+.tarjeta-meta { background: linear-gradient(120deg, #1B5E3A 0%, #2E7D5B 55%, #3E8E66 100%); border-radius: 1.25rem; }
+.tarjeta-indice { background: linear-gradient(140deg, #1B5E3A, #2E7D5B); border-radius: 1.25rem; }
+.chips { display: flex; gap: .5rem; overflow-x: auto; padding-bottom: .25rem; scrollbar-width: none; }
+.chips .btn { white-space: nowrap; }
+.tarjeta-platillo .img-platillo { transition: transform .35s ease; }
+.tarjeta-platillo:hover .img-platillo { transform: scale(1.04); }
+.tarjeta-platillo > button { overflow: hidden; }
+.sello-100 { position: absolute; left: .6rem; top: .6rem; background: rgba(255, 255, 255, .95); color: var(--kalo-verde); font-size: .72rem; font-weight: 700; border-radius: 999px; padding: .2rem .6rem; box-shadow: 0 2px 8px rgba(0, 0, 0, .12); }
+
+/* Locales */
+.portada-local { position: relative; height: 130px; background: linear-gradient(135deg, #2E7D5B, #8BC34A) center / cover no-repeat; }
+.portada-local.portada-grande { height: 190px; }
+.portada-local .posicion { position: absolute; left: .75rem; top: .6rem; background: #fff; border-radius: 999px; padding: .15rem .6rem; font-weight: 800; box-shadow: 0 2px 8px rgba(0, 0, 0, .15); }
+.foto-cocina { border-radius: .8rem; overflow: hidden; background: var(--kalo-verde-claro); }
+.foto-cocina img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; display: block; transition: transform .3s ease; }
+.foto-cocina:hover img { transform: scale(1.05); }
+.etiqueta-foto { position: absolute; left: 0; right: 0; bottom: 0; padding: .35rem .5rem; font-size: .7rem; color: #fff; background: linear-gradient(transparent, rgba(0, 0, 0, .7)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+
+/* Pago */
+.caja-pago { background: linear-gradient(120deg, #1F2D3D, #1B5E3A); color: #fff; }
+
+/* Avisos */
+.campana::after, .sin-flecha::after { display: none !important; }
+.menu-avisos { width: min(92vw, 360px); }
+.lista-avisos { max-height: 60vh; overflow-y: auto; }
+.lista-avisos .dropdown-item { white-space: normal; }
+.aviso-nuevo { background: #F0F9F3; }
+.aviso-sin-conexion { position: sticky; top: 0; z-index: 2100; background: #FEF3C7; color: #92400E; }
+
+/* Perfil */
+.avatar { width: 72px; height: 72px; border-radius: 50%; display: grid; place-items: center; font-size: 1.8rem; font-weight: 800; color: #fff; background: linear-gradient(135deg, #2E7D5B, #F59E0B); }
+.tarjeta-plan { transition: border-color .15s ease, box-shadow .15s ease; }
+.tarjeta-plan:hover { box-shadow: 0 6px 18px rgba(16, 24, 40, .08); }
+.tarjeta-plan.activo { border: 2px solid var(--kalo-verde) !important; background: #F0F9F3; }
+.resultado-imc { background: var(--kalo-verde-claro); }
+
+/* Portada */
+.portada { position: relative; overflow: hidden; }
+.portada::after { content: ''; position: absolute; right: -120px; top: -120px; width: 380px; height: 380px; border-radius: 50%; background: rgba(245, 158, 11, .18); }
+.portada .container { position: relative; z-index: 1; }
+.foto-portada { border-radius: 1.5rem; box-shadow: 0 20px 50px rgba(0, 0, 0, .25); aspect-ratio: 4 / 3; object-fit: cover; width: 100%; }
+.cifra { font-size: 2rem; font-weight: 800; color: var(--kalo-verde); line-height: 1; }
+
+/* ── Accesibilidad (RNF-08) ─────────────────────────────────────────── */
+html.a11y-texto-grande { font-size: 118%; }
+html.a11y-contraste {
+  --bs-body-bg: #fff; --bs-body-color: #000; --bs-secondary-color: #1a1a1a;
+  --kalo-verde: #0B3D22; --bs-primary: #0B3D22; --bs-link-color: #0B3D22;
+}
+html.a11y-contraste .text-secondary, html.a11y-contraste .text-body-secondary { color: #1a1a1a !important; }
+html.a11y-contraste .card, html.a11y-contraste .form-control, html.a11y-contraste .form-select { border: 2px solid #000 !important; }
+html.a11y-contraste .btn { border-width: 2px; }
+html.a11y-contraste .btn-primary { --bs-btn-bg: #0B3D22; --bs-btn-border-color: #000; }
+html.a11y-contraste .badge.bg-light { border: 1px solid #000 !important; }
+html.a11y-contraste a:not(.btn) { text-decoration: underline; }
+html.a11y-contraste .tarjeta-meta, html.a11y-contraste .portada, html.a11y-contraste .tarjeta-indice { background: #0B3D22; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}
+.form-range { accent-color: var(--kalo-verde); }
+.form-range::-webkit-slider-thumb { background: var(--kalo-verde); }
+.form-range::-moz-range-thumb { background: var(--kalo-verde); }
+.list-group { --bs-list-group-active-bg: var(--kalo-verde); --bs-list-group-active-border-color: var(--kalo-verde); }
