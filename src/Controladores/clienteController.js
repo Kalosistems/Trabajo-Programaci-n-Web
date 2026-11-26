@@ -11,6 +11,7 @@ const { armarPerfil } = require('../utils/perfil');
 const { revisarPago } = require('../utils/pago');
 const { avisar } = require('../utils/avisos');
 const { datosPublicos } = require('./authController');
+const pagos = require('../Modelos/sql/pagos');
 
 // Medianoche de hoy en Chile, sin importar la zona horaria del servidor (Railway usa UTC)
 function inicioDelDiaChile(ahora = new Date()) {
@@ -87,6 +88,13 @@ exports.contratarPlan = async (req, res) => {
         if (revision.error) return error(res, ...revision.error);
 
         const codigo = `KALO-${new Date().getFullYear()}-P${crypto.randomInt(10000, 100000)}`;
+        // El pago se anota en el libro de pagos de PostgreSQL (referencia UNIQUE: no se reutiliza)
+        try {
+            await pagos.registrarPago({ ...revision.pago, cuentaId: req.usuario.cuentaId, codigoPedido: codigo, concepto: 'plan', monto: plan.precio_mensual, moneda: 'USD' });
+        } catch (e) {
+            if (e instanceof pagos.PagoRepetido) return error(res, 409, 'PAGO_YA_USADO', e.message);
+            throw e;
+        }
         const pedido = await Pedido.create({
             codigo_pedido: codigo,
             tipo: 'plan',

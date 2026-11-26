@@ -22,6 +22,8 @@ const { recalcularIndiceRestaurante } = require('../utils/ranking');
 const { revisarPago } = require('../utils/pago');
 const { avisar, numero } = require('../utils/avisos');
 const { datosPublicos } = require('./authController');
+const pagos = require('../Modelos/sql/pagos');
+const cuentas = require('../Modelos/sql/cuentas');
 
 const COSTO_ENVIO = 1490;
 const MAX_INTENTOS_PIN = 5;
@@ -373,23 +375,37 @@ exports.crearPedido = async (req, res) => {
         const codigo = `KALO-${new Date().getFullYear()}-${crypto.randomInt(100000, 1000000)}`;
         const restauranteId = [...restaurantes][0];
 
-        const nuevoPedido = await Pedido.create({
-            codigo_pedido: codigo,
-            fecha_pedido: new Date(),
-            estado: 'Pagado',
-            tipo: 'platillos',
-            pago: revision.pago,
-            cliente: {
-                usuario_id: usuario._id,
-                nombre: usuario.nombre,
-                correo: usuario.correo,
-                telefono: usuario.telefono
-            },
-            restaurante_id: restauranteId,
-            detalles,
-            total,
-            total_calorias: totalCalorias
-        });
+        // El pago se anota en el libro de pagos de PostgreSQL (referencia UNIQUE: no se reutiliza)
+        try {
+            await pagos.registrarPago({ ...revision.pago, cuentaId: req.usuario.cuentaId, codigoPedido: codigo, concepto: 'platillos', monto: total, moneda: 'CLP' });
+        } catch (e) {
+            if (e instanceof pagos.PagoRepetido) return error(res, 409, 'PAGO_YA_USADO', e.message);
+            throw e;
+        }
+
+        let nuevoPedido;
+        try {
+            nuevoPedido = await Pedido.create({
+                codigo_pedido: codigo,
+                fecha_pedido: new Date(),
+                estado: 'Pagado',
+                tipo: 'platillos',
+                pago: revision.pago,
+                cliente: {
+                    usuario_id: usuario._id,
+                    nombre: usuario.nombre,
+                    correo: usuario.correo,
+                    telefono: usuario.telefono
+                },
+                restaurante_id: restauranteId,
+                detalles,
+                total,
+                total_calorias: totalCalorias
+            });
+        } catch (e) {
+            await pagos.anularRegistro(revision.pago.referencia); // si MongoDB falla, no queda un pago huérfano
+            throw e;
+        }
 
         // RF-20: se notifica al restaurante
         await avisar(restauranteId, 'restaurante', 'nuevo_pedido', 'Nuevo pedido pagado',
@@ -504,6 +520,8 @@ exports.eliminarUsuario = async (req, res) => {
         if (!borrado) return error(res, 404, 'USUARIO_NO_ENCONTRADO', 'La cuenta ya no existe.');
         const r = await Pedido.deleteMany({ 'cliente.usuario_id': usuario_id });
         await Notificacion.deleteMany({ destinatario_id: usuario_id });
+        await cuentas.eliminarPorMongoId(usuario_id); // cuenta, sesiones y accesos en PostgreSQL
+        res.clearCookie('kalo_sesion', { path: '/api' });
 
         res.status(200).json({
             exito: true,
@@ -648,7 +666,10 @@ exports.actualizarEstadoPedido = async (req, res) => {
             pedido.despachado_en = new Date();
             pedido.intentos_pin = 0;
         }
-        if (nuevo_estado === 'Cancelado' && pedido.pago) pedido.pago.estado = 'Reembolsado';
+        if (nuevo_estado === 'Cancelado' && pedido.pago) {
+            pedido.pago.estado = 'Reembolsado';
+            await pagos.marcarReembolsado(pedido.codigo_pedido); // también en el libro de pagos (PostgreSQL)
+        }
         pedido.estado = nuevo_estado;
         await pedido.save();
 
