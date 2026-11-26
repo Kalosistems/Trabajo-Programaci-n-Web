@@ -186,4 +186,20 @@ exports.cambiarEstadoPlatillo = async (req, res) => {
     }
 };
 
+// PUT /api/mongo/platillos/:id/stock  { stock }  (restaurante) · inventario de porciones
+exports.cambiarStock = async (req, res) => {
+    if (!verificarConexion(res)) return;
+    try {
+        if (!esId(req.params.id)) return error(res, 400, 'ID_INVALIDO', 'El identificador no es válido.');
+        const stock = parseInt(req.body?.stock, 10);
+        if (!(stock >= 0 && stock <= 9999)) return error(res, 422, 'STOCK_INVALIDO', 'El stock debe ser un número entre 0 y 9.999.');
+        const plato = await Platillo.findOneAndUpdate({ _id: req.params.id, restaurante_id: req.usuario.id }, { $set: { stock } }, { new: true });
+        if (!plato) return error(res, 404, 'PLATILLO_NO_ENCONTRADO', 'Ese platillo no es de tu local.');
+        const mensaje = stock ? `"${plato.nombre}": ${stock} porciones disponibles.` : `"${plato.nombre}" quedó agotado.`;
+        res.status(200).json({ exito: true, mensaje, platillo: plato });
+    } catch (e) {
+        falla(res, e, 'Error al cambiar el stock');
+    }
+};
+
 exports.MAX_FOTOS = MAX_FOTOS;

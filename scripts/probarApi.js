@@ -192,6 +192,16 @@ function revisar(nombre, condicion, detalle = '') {
     const idEnsalada = r.data.platillo._id;
     r = await llamar('POST', '/api/mongo/platillos', { token: tR, body: { nombre: 'Bowl calculado', precio: 6990, calcular_nutricion: true, ingredientes: [{ nombre: 'Pollo', cantidad_g: 150, metodo_coccion: 'Plancha' }, { nombre: 'Quinoa', cantidad_g: 100, metodo_coccion: 'Hervido' }] } });
     revisar('platillo sin calorías: Kalo las calcula con los ingredientes (RF-08)', r.status === 201 && r.data.platillo.nutricion_calculada && r.data.platillo.calorias > 300);
+    r = await llamar('PUT', '/api/mongo/platillos/' + idEnsalada + '/stock', { token: tR, body: { stock: 1 } });
+    revisar('el local ajusta el stock de un platillo', r.status === 200 && r.data.platillo.stock === 1);
+    r = await llamar('POST', '/api/mongo/pedidos', { token: tC, body: { items: [{ platillo_id: idEnsalada, cantidad: 2 }], pago: nuevoPago() } });
+    revisar('pedir más porciones de las que quedan → 409 SIN_STOCK', r.status === 409 && r.data.codigo === 'SIN_STOCK');
+    r = await llamar('POST', '/api/mongo/pedidos', { token: tC, body: { items: [{ platillo_id: idEnsalada, cantidad: 1 }], pago: nuevoPago() } });
+    const conStock = await llamar('GET', '/api/mongo/platillos/mios', { token: tR });
+    revisar('comprar descuenta el stock (queda 0 = Agotado)', r.status === 201 && conStock.data.datos.find(p => p._id === idEnsalada).stock === 0);
+    r = await llamar('PUT', '/api/mongo/pedidos/estado', { token: tR, body: { codigo_pedido: r.data.pedido.codigo_pedido, nuevo_estado: 'Cancelado' } });
+    const devuelto = await llamar('GET', '/api/mongo/platillos/mios', { token: tR });
+    revisar('rechazar el pedido devuelve la porción al stock', r.status === 200 && devuelto.data.datos.find(p => p._id === idEnsalada).stock === 1);
     r = await llamar('PUT', '/api/mongo/platillos/' + idEnsalada + '/estado', { token: tR, body: { activo: false } });
     revisar('retirar un platillo del menú', r.status === 200 && r.data.platillo.activo === false);
     r = await llamar('POST', '/api/mongo/restaurantes/fotos', { token: tR, body: { imagen: 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ==', descripcion: 'Mesón de prueba' } });

@@ -65,6 +65,8 @@ const PlatilloSchema = new mongoose.Schema({
         max: 100,
         default: 20
     },
+    // Inventario: porciones disponibles. Se descuenta al comprar y en 0 el platillo aparece "Agotado"
+    stock: { type: Number, min: 0, default: 30 },
     // true si las calorías y macros los calculó Kalo a partir de los ingredientes (RF-08)
     nutricion_calculada: { type: Boolean, default: false },
     restaurante_id: {

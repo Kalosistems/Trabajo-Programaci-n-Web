@@ -167,3 +167,6 @@ html.a11y-contraste .tarjeta-meta, html.a11y-contraste .portada, html.a11y-contr
 .form-range::-webkit-slider-thumb { background: var(--kalo-verde); }
 .form-range::-moz-range-thumb { background: var(--kalo-verde); }
 .list-group { --bs-list-group-active-bg: var(--kalo-verde); --bs-list-group-active-border-color: var(--kalo-verde); }
+
+/* Inventario */
+.velo-agotado { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(255, 255, 255, .65); font-weight: 800; font-size: 1.2rem; color: #B91C1C; letter-spacing: .05em; text-transform: uppercase; }

@@ -18,6 +18,14 @@ export function Transparencia({ valor = 0, grande = false }) {
   return <Badge bg={color} text={color === 'warning' ? 'dark' : undefined} className="rounded-pill"><i className="bi bi-patch-check-fill me-1" aria-hidden="true" />{v} %</Badge>;
 }
 
+// Inventario: "Agotado" o "Quedan N" cuando quedan pocas porciones
+export function Stock({ valor, siempre = false }) {
+  if (valor === undefined || valor === null) return null;
+  if (valor <= 0) return <Badge bg="danger" className="rounded-pill">Agotado</Badge>;
+  if (valor <= 5 || siempre) return <Badge bg={valor <= 5 ? 'warning' : 'light'} text="dark" className="rounded-pill border">Quedan {valor}</Badge>;
+  return null;
+}
+
 const COLOR_ESTADO = {
   Pendiente: 'secondary', Pagado: 'info', 'En Preparación': 'warning', 'En Camino': 'primary', Entregado: 'success', Cancelado: 'danger'
 };

@@ -6,7 +6,7 @@ import { useCarrito } from '../../contexto/Carrito';
 import { useAvisos } from '../../contexto/Avisos';
 import { useCarga, useTitulo } from '../../hooks';
 import { ErrorCarga, Esqueleto, Vacio } from '../../componentes/Estados';
-import { Estrellas, ImagenPlatillo, Transparencia } from '../../componentes/Insignias';
+import { Estrellas, ImagenPlatillo, Stock, Transparencia } from '../../componentes/Insignias';
 
 // Galería de fotos de la cocina (RF-07). Se reutiliza en "Mi local" del restaurante.
 export function Galeria({ fotos, alEliminar }) {
@@ -50,6 +50,7 @@ export default function PerfilLocal() {
   const v = Math.round(r.indice_transparencia || 0);
 
   const agregar = (p) => {
+    if (p.stock === 0) { avisar(`"${p.nombre}" está agotado.`, 'error'); return; }
     const plato = { ...p, restaurante_id: { _id: r._id, nombre: r.nombre } };
     if (carrito.esDeOtroLocal(plato)) { avisar(`Tu carrito tiene platillos de ${carrito.restaurante?.nombre}. Vacíalo para pedir aquí.`, 'error'); return; }
     carrito.agregar(plato, 1);
@@ -88,10 +89,10 @@ export default function PerfilLocal() {
                     <ImagenPlatillo src={p.imagen_url} alt={p.nombre} />
                     <Card.Body className="d-flex flex-column">
                       <div className="d-flex justify-content-between gap-2"><h3 className="h6 mb-1">{p.nombre}</h3><Transparencia valor={p.indice_transparencia} /></div>
-                      <div className="small text-secondary mb-2"><i className="bi bi-fire text-warning me-1" />{p.calorias} kcal · {p.macronutrientes?.proteinas_g} g prot.</div>
+                      <div className="small text-secondary mb-2"><i className="bi bi-fire text-warning me-1" />{p.calorias} kcal · {p.macronutrientes?.proteinas_g} g prot. <Stock valor={p.stock} /></div>
                       <div className="d-flex justify-content-between align-items-center mt-auto">
                         <span className="fw-bold">{clp(p.precio)}</span>
-                        <Button size="sm" onClick={() => agregar(p)}><i className="bi bi-plus-lg me-1" />Agregar</Button>
+                        <Button size="sm" onClick={() => agregar(p)} disabled={p.stock === 0}><i className="bi bi-plus-lg me-1" />{p.stock === 0 ? 'Agotado' : 'Agregar'}</Button>
                       </div>
                     </Card.Body>
                   </Card>

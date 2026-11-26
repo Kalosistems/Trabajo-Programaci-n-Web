@@ -153,12 +153,14 @@ async function poblar() {
             nombre: 'Crema de Zapallo y Lentejas', categoria: 'Cena', precio: 5600, calorias: 340, m: [16, 52, 6], peso_porcion_g: 400,
             descripcion: 'Crema de zapallo camote con lentejas rojas y semillas de zapallo tostadas.', alergenos: 'Sin alérgenos declarados',
             restaurante_id: huerta._id,
+            stock: 0,
             ingredientes: [ing('Zapallo', 250, 'Hervido'), ing('Lenteja', 120, 'Hervido'), ing('Cebolla', 30, 'Salteado')]
         }),
         plato({
             nombre: 'Tostadas de Palta y Huevo', categoria: 'Snack', precio: 4800, calorias: 380, m: [16, 30, 22],
             descripcion: 'Pan integral con palta, huevo pochado y semillas.', alergenos: 'Gluten, huevo',
             imagen_url: IMG('1525351484163-7529414344d8'), restaurante_id: huerta._id,
+            stock: 4,
             ingredientes: [ing('Pan integral', 60), ing('Palta', 70), ing('Huevo', 55)]
         })
     ]);

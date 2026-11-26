@@ -28,6 +28,7 @@ const cuentas = require('../Modelos/sql/cuentas');
 
 const COSTO_ENVIO = 1490;
 const MAX_INTENTOS_PIN = 5;
+const STOCK_INICIAL = 30;
 const ESTADOS = ['Pendiente', 'Pagado', 'En Preparación', 'En Camino', 'Entregado', 'Cancelado'];
 // Avances permitidos del pedido (el restaurante no puede saltar ni retroceder estados) · RF-20
 const SIGUIENTE = {
@@ -49,6 +50,31 @@ async function pinUnico() {
         if (!(await Pedido.exists({ estado: 'En Camino', pin_seguridad: pin }))) return pin;
     }
     return pinAleatorio();
+}
+
+// ── Inventario (stock de porciones) ─────────────────────────────────
+// Descuenta de forma atómica: el filtro { stock: { $gte: cantidad } } impide que dos pedidos
+// simultáneos se lleven la misma última porción. Si una línea falla, se devuelven las anteriores.
+async function reservarStock(detalles) {
+    // Platillos creados antes de que existiera el inventario: parten con 30 porciones
+    await Platillo.updateMany({ _id: { $in: detalles.map(d => d.platillo_id) }, stock: { $exists: false } }, { $set: { stock: STOCK_INICIAL } });
+    const hechos = [];
+    for (const d of detalles) {
+        const r = await Platillo.updateOne({ _id: d.platillo_id, stock: { $gte: d.cantidad } }, { $inc: { stock: -d.cantidad } });
+        if (r.modifiedCount !== 1) {
+            await devolverStock(hechos);
+            const p = await Platillo.findById(d.platillo_id, 'stock').lean();
+            return { agotado: d.nombre_platillo, quedan: p?.stock ?? 0 };
+        }
+        hechos.push(d);
+    }
+    return {};
+}
+
+async function devolverStock(detalles) {
+    for (const d of detalles || []) {
+        await Platillo.updateOne({ _id: d.platillo_id }, { $inc: { stock: d.cantidad } });
+    }
 }
 
 // Quita el PIN y los datos del pago cuando quien consulta no es el cliente dueño (RF-16)
@@ -376,10 +402,17 @@ exports.crearPedido = async (req, res) => {
         const codigo = `KALO-${new Date().getFullYear()}-${crypto.randomInt(100000, 1000000)}`;
         const restauranteId = [...restaurantes][0];
 
+        // Inventario: se reservan las porciones (si otro cliente se llevó las últimas, 409 SIN_STOCK)
+        const reservado = await reservarStock(detalles);
+        if (reservado.agotado) {
+            return error(res, 409, 'SIN_STOCK', `No quedan porciones suficientes de "${reservado.agotado}". Quedan ${reservado.quedan}.`);
+        }
+
         // El pago se anota en el libro de pagos de PostgreSQL (referencia UNIQUE: no se reutiliza)
         try {
             await pagos.registrarPago({ ...revision.pago, cuentaId: req.usuario.cuentaId, codigoPedido: codigo, concepto: 'platillos', monto: total, moneda: 'CLP' });
         } catch (e) {
+            await devolverStock(detalles);
             if (e instanceof pagos.PagoRepetido) return error(res, 409, 'PAGO_YA_USADO', e.message);
             throw e;
         }
@@ -405,6 +438,7 @@ exports.crearPedido = async (req, res) => {
             });
         } catch (e) {
             await pagos.anularRegistro(revision.pago.referencia); // si MongoDB falla, no queda un pago huérfano
+            await devolverStock(detalles);
             throw e;
         }
 
@@ -558,8 +592,10 @@ exports.crearPlatillo = async (req, res) => {
     try {
         const {
             nombre, descripcion, precio, categoria, imagen_url,
-            peso_porcion, alergenos, ingredientes_limpios, calcular_nutricion
+            peso_porcion, alergenos, ingredientes_limpios, calcular_nutricion, stock
         } = req.body || {};
+        const stockN = stock === undefined || stock === '' ? STOCK_INICIAL : parseInt(stock, 10);
+        if (!(stockN >= 0 && stockN <= 9999)) return error(res, 422, 'STOCK_INVALIDO', 'El stock debe ser un número entre 0 y 9.999.');
         let { calorias, proteinas, carbos, grasas } = req.body || {};
 
         if (!nombre || precio === undefined) {
@@ -616,6 +652,7 @@ exports.crearPlatillo = async (req, res) => {
             ingredientes_limpios: ingredientes_limpios === true || ingredientes_limpios === 'true',
             indice_transparencia: indice,
             nutricion_calculada: nutricionCalculada,
+            stock: stockN,
             restaurante_id: req.usuario.id // el restaurante sale del token
         });
         const ranking = await recalcularIndiceRestaurante(req.usuario.id);
@@ -670,6 +707,7 @@ exports.actualizarEstadoPedido = async (req, res) => {
         if (nuevo_estado === 'Cancelado' && pedido.pago) {
             pedido.pago.estado = 'Reembolsado';
             await pagos.marcarReembolsado(pedido.codigo_pedido); // también en el libro de pagos (PostgreSQL)
+            await devolverStock(pedido.detalles);                // las porciones vuelven al inventario
         }
         pedido.estado = nuevo_estado;
         await pedido.save();

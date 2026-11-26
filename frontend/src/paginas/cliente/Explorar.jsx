@@ -7,7 +7,7 @@ import { useAvisos } from '../../contexto/Avisos';
 import { useSesion } from '../../contexto/Sesion';
 import { useCarga, useTitulo } from '../../hooks';
 import { ErrorCarga, Esqueleto, Vacio } from '../../componentes/Estados';
-import { ImagenPlatillo, Transparencia } from '../../componentes/Insignias';
+import { ImagenPlatillo, Stock, Transparencia } from '../../componentes/Insignias';
 
 const CATEGORIAS = ['todas', 'Desayuno', 'Almuerzo', 'Cena', 'Snack'];
 const ORDEN = { transparencia: 'Más transparentes', kcal: 'Menos calorías', precio: 'Menor precio', proteina: 'Más proteína' };
@@ -97,6 +97,8 @@ export default function Explorar() {
   const totalDia = comidas + enCamino + carrito.kcal;
 
   const agregar = (p, n = 1) => {
+    if (p.stock === 0) { avisar(`"${p.nombre}" está agotado.`, 'error'); return; }
+    if (p.stock !== undefined && n > p.stock) { avisar(`Solo quedan ${p.stock} porciones de "${p.nombre}".`, 'error'); return; }
     if (carrito.esDeOtroLocal(p)) { setConfirmarCambio({ p, n }); return; }
     carrito.agregar(p, n);
     avisar(`Agregaste ${n} × ${p.nombre} al carrito`);
@@ -180,6 +182,7 @@ export default function Explorar() {
                   <button type="button" className="btn p-0 border-0 text-start position-relative" onClick={() => { setFicha(p); setCantidad(1); }} aria-label={`Ver ficha de ${p.nombre}`}>
                     <ImagenPlatillo src={p.imagen_url} alt={p.nombre} />
                     {p.indice_transparencia === 100 && <span className="sello-100"><i className="bi bi-patch-check-fill me-1" />100 % transparente</span>}
+                    {p.stock === 0 && <span className="velo-agotado">Agotado</span>}
                   </button>
                   <Card.Body className="d-flex flex-column">
                     <div className="d-flex justify-content-between align-items-start gap-2">
@@ -193,11 +196,12 @@ export default function Explorar() {
                     <div className="d-flex gap-2 mb-2">
                       <Badge bg="light" text="dark" className="border"><i className="bi bi-fire text-warning me-1" />{p.calorias} kcal</Badge>
                       <Badge bg="light" text="dark" className="border">{p.categoria}</Badge>
+                      <Stock valor={p.stock} />
                     </div>
                     <Macros m={p.macronutrientes} />
                     <div className="d-flex justify-content-between align-items-center mt-auto pt-3">
                       <span className="fs-5 fw-bold">{clp(p.precio)}</span>
-                      <Button size="sm" onClick={() => agregar(p)} aria-label={`Agregar ${p.nombre} al carrito`}><i className="bi bi-plus-lg me-1" />Agregar</Button>
+                      <Button size="sm" onClick={() => agregar(p)} disabled={p.stock === 0} aria-label={`Agregar ${p.nombre} al carrito`}><i className="bi bi-plus-lg me-1" />{p.stock === 0 ? 'Agotado' : 'Agregar'}</Button>
                     </div>
                   </Card.Body>
                 </Card>
@@ -252,9 +256,10 @@ export default function Explorar() {
               <div className="d-flex align-items-center gap-2" role="group" aria-label="Cantidad">
                 <Button variant="outline-secondary" onClick={() => setCantidad(Math.max(1, cantidad - 1))} aria-label="Quitar uno">−</Button>
                 <span className="fw-bold fs-5 px-2" aria-live="polite">{cantidad}</span>
-                <Button variant="outline-secondary" onClick={() => setCantidad(Math.min(20, cantidad + 1))} aria-label="Agregar uno">+</Button>
+                <Button variant="outline-secondary" onClick={() => setCantidad(Math.min(20, ficha.stock ?? 20, cantidad + 1))} aria-label="Agregar uno">+</Button>
+                <Stock valor={ficha.stock} />
               </div>
-              <Button size="lg" onClick={() => agregar(ficha, cantidad)}>Agregar · {clp(ficha.precio * cantidad)}</Button>
+              <Button size="lg" onClick={() => agregar(ficha, cantidad)} disabled={ficha.stock === 0}>{ficha.stock === 0 ? 'Agotado' : <>Agregar · {clp(ficha.precio * cantidad)}</>}</Button>
             </Modal.Footer>
           </>
         )}

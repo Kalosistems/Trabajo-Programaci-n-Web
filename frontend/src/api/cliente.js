@@ -81,6 +81,7 @@ export const api = {
   crearPlatillo: (datos) => pedir('POST', '/mongo/platillos', datos),
   misPlatillos: () => pedir('GET', '/mongo/platillos/mios'),
   estadoPlatillo: (id, activo) => pedir('PUT', `/mongo/platillos/${id}/estado`, { activo }),
+  cambiarStock: (id, stock) => pedir('PUT', `/mongo/platillos/${id}/stock`, { stock }),
   miLocal: () => pedir('GET', '/mongo/restaurantes/mi-local'),
   subirFotoCocina: (datos) => pedir('POST', '/mongo/restaurantes/fotos', datos),
   eliminarFotoCocina: (id) => pedir('DELETE', `/mongo/restaurantes/fotos/${id}`),
