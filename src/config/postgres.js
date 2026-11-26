@@ -65,6 +65,17 @@ CREATE TABLE IF NOT EXISTS accesos (
     ip         VARCHAR(45),
     fecha      TIMESTAMPTZ  NOT NULL DEFAULT now()
 );
+-- Caché de la API de USDA FoodData Central (servicio en la nube, RF-08)
+CREATE TABLE IF NOT EXISTS alimentos_usda (
+    consulta        VARCHAR(120) PRIMARY KEY,
+    fdc_id          INTEGER      NOT NULL,
+    descripcion     VARCHAR(200) NOT NULL,
+    kcal            NUMERIC(7,2) NOT NULL,
+    proteinas       NUMERIC(7,2) NOT NULL,
+    carbos          NUMERIC(7,2) NOT NULL,
+    grasas          NUMERIC(7,2) NOT NULL,
+    actualizado_en  TIMESTAMPTZ  NOT NULL DEFAULT now()
+);
 `;
 
 async function conectarPostgres() {

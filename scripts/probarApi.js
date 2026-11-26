@@ -89,7 +89,7 @@ function revisar(nombre, condicion, detalle = '') {
     r = await llamar('GET', '/api/mongo/restaurantes/' + local._id);
     revisar('perfil público del local con galería de la cocina (RF-07)', r.status === 200 && r.data.datos.fotos.length >= 1 && r.data.datos.platillos.length >= 1 && !r.data.datos.restaurante.correo);
     r = await llamar('POST', '/api/mongo/nutricion/calcular', { body: { ingredientes: [{ nombre: 'Pechuga de pollo', cantidad_g: 150, metodo_coccion: 'Plancha' }, { nombre: 'Arroz', cantidad_g: 100 }] } });
-    revisar('cálculo nutricional automático (RF-08)', r.status === 200 && r.data.datos.calorias === 378 && r.data.datos.proteinas > 40, JSON.stringify(r.data).slice(0, 200));
+    revisar('cálculo nutricional con USDA FoodData Central o tabla de respaldo (RF-08)', r.status === 200 && r.data.datos.calorias > 330 && r.data.datos.calorias < 420 && r.data.datos.proteinas > 40 && !!r.data.datos.fuente, JSON.stringify(r.data).slice(0, 200));
     r = await llamar('GET', '/api/mongo/platillos?maxCalorias=abc');
     revisar('GET platillos con parámetro inválido → 400', r.status === 400);
     r = await llamar('GET', '/api/mongo/platillos?busqueda=(');

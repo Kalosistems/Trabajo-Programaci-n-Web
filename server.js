@@ -14,6 +14,7 @@ const cookieParser = require('cookie-parser');
 const { conectarMongo, estadoConexion } = require('./src/config/mongo');
 const { conectarPostgres, estadoPostgres, cerrarPostgres } = require('./src/config/postgres');
 const { sanitizar } = require('./src/middleware/sanitizar');
+const { estadoUsda } = require('./src/servicios/usda');
 const { limiteGeneral } = require('./src/middleware/limites');
 const { manejarErrores, rutaNoEncontrada } = require('./src/middleware/errores');
 const authRoutes = require('./src/Rutas/authRoutes');
@@ -63,7 +64,7 @@ app.get('/api/salud', (req, res) => {
     const postgres = estadoPostgres();
     const ok = mongo === 'conectada' && postgres === 'conectada';
     res.status(ok ? 200 : 503).json({
-        exito: ok, servicio: 'kalo-api', mongodb: mongo, postgresql: postgres,
+        exito: ok, servicio: 'kalo-api', mongodb: mongo, postgresql: postgres, usda: estadoUsda(),
         activo_desde_s: Math.round(process.uptime()), fecha: new Date().toISOString()
     });
 });

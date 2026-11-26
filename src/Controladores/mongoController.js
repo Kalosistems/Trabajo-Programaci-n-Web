@@ -16,7 +16,8 @@ const Notificacion = require('../Modelos/mongo/Notificacion');
 const FotoCocina = require('../Modelos/mongo/FotoCocina');
 const { normalizarTelefono, telefonoValido, MENSAJE_TELEFONO } = require('../utils/telefono');
 const { error, falla, verificarConexion, esId, revisarImagen } = require('../utils/respuestas');
-const { calcularIndiceTransparencia, calcularNutrientes, METODOS_COCCION } = require('../utils/nutricion');
+const { calcularIndiceTransparencia, METODOS_COCCION } = require('../utils/nutricion');
+const { calcularConUsda } = require('../servicios/usda');
 const { armarPerfil } = require('../utils/perfil');
 const { recalcularIndiceRestaurante } = require('../utils/ranking');
 const { revisarPago } = require('../utils/pago');
@@ -572,7 +573,7 @@ exports.crearPlatillo = async (req, res) => {
         // RF-08: cálculo nutricional automatizado
         let nutricionCalculada = false;
         if (calcular_nutricion === true || calcular_nutricion === 'true' || (calorias === undefined || calorias === '')) {
-            const n = calcularNutrientes(ingredientes);
+            const n = await calcularConUsda(ingredientes); // USDA FoodData Central (servicio en la nube)
             if (n.calorias > 0) {
                 calorias = n.calorias; proteinas = n.proteinas; carbos = n.carbos; grasas = n.grasas;
                 nutricionCalculada = true;
