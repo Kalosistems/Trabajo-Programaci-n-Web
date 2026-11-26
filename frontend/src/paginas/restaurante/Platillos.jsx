@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Badge, Button, Card, Form, InputGroup, Table } from 'react-bootstrap';
+import { Stock } from '../../componentes/Insignias';
 import { Link } from 'react-router-dom';
 import { api, clp } from '../../api/cliente';
 import { useAvisos } from '../../contexto/Avisos';
@@ -14,6 +15,20 @@ export default function Platillos() {
   const { actualizarUsuario } = useSesion();
   const [texto, setTexto] = useState('');
   const [cambiando, setCambiando] = useState(null);
+  const [stocks, setStocks] = useState({});
+
+  // Inventario: el local ajusta las porciones disponibles de cada platillo
+  const guardarStock = async (p) => {
+    const valor = parseInt(stocks[p._id], 10);
+    if (!(valor >= 0)) { avisar('Escribe un número de porciones (0 o más).', 'error'); return; }
+    setCambiando(p._id);
+    try {
+      const r = await api.cambiarStock(p._id, valor);
+      avisar(r.mensaje);
+      setStocks((s) => { const n = { ...s }; delete n[p._id]; return n; });
+      await recargar(true);
+    } catch (e) { avisar(e.message, 'error'); } finally { setCambiando(null); }
+  };
   const { datos, error, cargando, recargar } = useCarga(() => api.misPlatillos(), []);
   const mios = (datos || []).filter((p) => p.nombre.toLowerCase().includes(texto.toLowerCase()));
 
@@ -45,7 +60,7 @@ export default function Platillos() {
       ) : (
         <Card>
           <Table responsive hover className="mb-0 align-middle">
-            <thead className="table-light"><tr><th>Platillo</th><th>Categoría</th><th>Precio</th><th>Calorías</th><th>Macros (P/C/G)</th><th>Transparencia</th><th>En el menú</th></tr></thead>
+            <thead className="table-light"><tr><th>Platillo</th><th>Categoría</th><th>Precio</th><th>Calorías</th><th>Macros (P/C/G)</th><th>Transparencia</th><th style={{ width: 150 }}>Stock</th><th>En el menú</th></tr></thead>
             <tbody>
               {mios.map((p) => (
                 <tr key={p._id} className={p.activo ? '' : 'opacity-50'}>
@@ -56,6 +71,13 @@ export default function Platillos() {
                   <td className="text-nowrap">{p.calorias} kcal {p.nutricion_calculada && <i className="bi bi-calculator text-verde" title="Calculado por Kalo" aria-label="Calculado por Kalo" />}</td>
                   <td className="small">{p.macronutrientes?.proteinas_g} / {p.macronutrientes?.carbohidratos_g} / {p.macronutrientes?.grasas_g} g</td>
                   <td><Transparencia valor={p.indice_transparencia} /></td>
+                  <td>
+                    <InputGroup size="sm">
+                      <Form.Control type="number" min={0} value={stocks[p._id] ?? p.stock ?? 30} onChange={(e) => setStocks({ ...stocks, [p._id]: e.target.value })} aria-label={`Stock de ${p.nombre}`} />
+                      {stocks[p._id] !== undefined && <Button variant="outline-primary" disabled={cambiando === p._id} onClick={() => guardarStock(p)} aria-label="Guardar stock"><i className="bi bi-check-lg" /></Button>}
+                    </InputGroup>
+                    <div className="mt-1"><Stock valor={p.stock} /></div>
+                  </td>
                   <td><Form.Check type="switch" id={`activo-${p._id}`} checked={p.activo} disabled={cambiando === p._id} onChange={() => alternar(p)} aria-label={p.activo ? `Retirar ${p.nombre} del menú` : `Publicar ${p.nombre}`} /></td>
                 </tr>
               ))}

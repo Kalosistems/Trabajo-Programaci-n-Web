@@ -27,8 +27,9 @@ const Reparto = lazy(() => import('./paginas/repartidor/Reparto'));
 
 // Protege las rutas: sin sesión → login; con otro rol → su propia pantalla de inicio
 function SoloRol({ rol, children }) {
-  const { rol: actual } = useSesion();
+  const { rol: actual, revisando } = useSesion();
   const ubicacion = useLocation();
+  if (revisando) return <Cargando texto="Revisando tu sesión…" />;
   if (!actual) return <Navigate to="/entrar" replace state={{ desde: ubicacion.pathname }} />;
   if (actual !== rol) return <Navigate to={INICIO_POR_ROL[actual]} replace />;
   return children;

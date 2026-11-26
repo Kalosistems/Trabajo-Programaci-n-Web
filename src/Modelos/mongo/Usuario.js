@@ -30,8 +30,6 @@ const PlanActivoSchema = new mongoose.Schema({
 const UsuarioSchema = new mongoose.Schema({
     nombre: { type: String, required: true, trim: true },
     correo: { type: String, required: true, unique: true, lowercase: true, trim: true },
-    // Hash bcrypt de la contraseña (nunca la contraseña en texto plano)
-    password_hash: { type: String, required: true, select: false },
     telefono: { type: String, default: '+56912345678' },
     activo: { type: Boolean, default: true },
     fecha_registro: { type: Date, default: Date.now },

@@ -1,6 +1,6 @@
 /**
- * Carga los datos de ejemplo en MongoDB (npm run seed).
- * ¡OJO! Borra y vuelve a crear las colecciones de Kalo.
+ * Carga los datos de ejemplo en MongoDB y PostgreSQL (npm run seed).
+ * ¡OJO! Borra y vuelve a crear las colecciones de Kalo y las tablas cuentas, sesiones, pagos y accesos.
  * Todas las cuentas de prueba usan la contraseña Kalo1234, guardada como hash bcrypt.
  * Los índices de transparencia, el IMC y la meta calórica se calculan con las mismas funciones
  * que usa la API; los datos de salud quedan cifrados (RNF-02).
@@ -8,6 +8,7 @@
 require('dotenv').config();
 const bcrypt = require('bcryptjs');
 const { conectarMongo, mongoose } = require('../src/config/mongo');
+const { conectarPostgres, consultar, postgresListo, cerrarPostgres } = require('../src/config/postgres');
 const Usuario = require('../src/Modelos/mongo/Usuario');
 const PlanNutricional = require('../src/Modelos/mongo/PlanNutricional');
 const Restaurante = require('../src/Modelos/mongo/Restaurante');
@@ -27,7 +28,16 @@ const HACE = (horas) => new Date(Date.now() - horas * 3600 * 1000);
 
 async function poblar() {
     await conectarMongo();
+    await conectarPostgres();
     if (mongoose.connection.readyState !== 1) throw new Error('No hay conexión con MongoDB (revisa MONGO_URI).');
+    if (!postgresListo()) throw new Error('No hay conexión con PostgreSQL (revisa DATABASE_URL).');
+    await consultar('TRUNCATE accesos, sesiones, pagos, cuentas RESTART IDENTITY CASCADE');
+    // Las contraseñas viven en PostgreSQL: cada perfil de MongoDB tiene su fila en cuentas
+    const crearCuentas = async (docs, rol) => {
+        for (const d of docs) {
+            await consultar('INSERT INTO cuentas (mongo_id, rol, correo, password_hash) VALUES ($1, $2, $3, $4)', [String(d._id), rol, d.correo, HASH]);
+        }
+    };
     const HASH = await bcrypt.hash(CLAVE_PRUEBA, 10); // '$2a$10$...'
 
     // La colección antigua "Usuario" (Etapa 2 inicial) se reemplaza por "usuarios"
@@ -39,19 +49,20 @@ async function poblar() {
     await Usuario.deleteMany({});
     const usuarios = await Usuario.create([
         {
-            nombre: 'Andrea Gómez', correo: 'andrea@mail.com', password_hash: HASH, telefono: '+56912345678',
+            nombre: 'Andrea Gómez', correo: 'andrea@mail.com', telefono: '+56912345678',
             perfil_biometrico: perfil({ peso: 68.5, altura: 1.65, edad: 28, genero: 'Femenino', nivel_actividad: 'ligero', objetivo: 'bajar' })
         },
         {
-            nombre: 'Benjamín Figueroa', correo: 'benjamin.figueroam@estudiantes.uv.cl', password_hash: HASH, telefono: '+56987654321',
+            nombre: 'Benjamín Figueroa', correo: 'benjamin.figueroam@estudiantes.uv.cl', telefono: '+56987654321',
             perfil_biometrico: perfil({ peso: 75, altura: 1.78, edad: 22, genero: 'Masculino', nivel_actividad: 'intenso', objetivo: 'subir' })
         },
         {
-            nombre: 'Ariadna Espejo', correo: 'ariadna.espejo@mail.com', password_hash: HASH, telefono: '+56955554444',
+            nombre: 'Ariadna Espejo', correo: 'ariadna.espejo@mail.com', telefono: '+56955554444',
             perfil_biometrico: perfil({ peso: 62, altura: 1.68, edad: 23, genero: 'Femenino', nivel_actividad: 'moderado', objetivo: 'mantener' })
         }
     ]);
-    console.log(`✅ ${usuarios.length} usuarios creados (datos de salud cifrados)`);
+    await crearCuentas(usuarios, 'cliente');
+    console.log(`✅ ${usuarios.length} usuarios creados (datos de salud cifrados, cuentas en PostgreSQL)`);
 
     // 2. Planes nutricionales
     await PlanNutricional.deleteMany({});
@@ -65,19 +76,21 @@ async function poblar() {
     // 3. Restaurantes
     await Restaurante.deleteMany({});
     const restaurantes = await Restaurante.insertMany([
-        { nombre: 'Green Bowl Nutrición', correo: 'contacto@greenbowl.cl', password_hash: HASH, especialidad: 'Bowls y ensaladas funcionales', direccion: 'Av. Libertad 450, Viña del Mar', telefono: '+56933445566' },
-        { nombre: 'Protein Kitchen Kalo', correo: 'pedidos@proteinkitchen.cl', password_hash: HASH, especialidad: 'Comidas altas en proteína y control de macros', direccion: 'Calle Prat 120, Valparaíso', telefono: '+56977889900' },
-        { nombre: 'Huerta Fresca', correo: 'hola@huertafresca.cl', password_hash: HASH, especialidad: 'Cocina vegetal de temporada', direccion: 'Cerro Alegre 233, Valparaíso', telefono: '+56944556677' }
+        { nombre: 'Green Bowl Nutrición', correo: 'contacto@greenbowl.cl', especialidad: 'Bowls y ensaladas funcionales', direccion: 'Av. Libertad 450, Viña del Mar', telefono: '+56933445566' },
+        { nombre: 'Protein Kitchen Kalo', correo: 'pedidos@proteinkitchen.cl', especialidad: 'Comidas altas en proteína y control de macros', direccion: 'Calle Prat 120, Valparaíso', telefono: '+56977889900' },
+        { nombre: 'Huerta Fresca', correo: 'hola@huertafresca.cl', especialidad: 'Cocina vegetal de temporada', direccion: 'Cerro Alegre 233, Valparaíso', telefono: '+56944556677' }
     ]);
     const [greenBowl, protein, huerta] = restaurantes;
+    await crearCuentas(restaurantes, 'restaurante');
     console.log(`✅ ${restaurantes.length} restaurantes creados`);
 
     // 4. Repartidores
     await Repartidor.deleteMany({});
     const repartidores = await Repartidor.insertMany([
-        { nombre: 'Carlos Repartidor Express', correo: 'carlos.reparto@kalo.cl', password_hash: HASH, telefono: '+56966112233', vehiculo: 'Motocicleta', estado: 'En Reparto', calificacion: 4.9 },
-        { nombre: 'Matías Rojas', correo: 'matias.reparto@kalo.cl', password_hash: HASH, telefono: '+56966445588', vehiculo: 'Bicicleta', estado: 'Disponible', calificacion: 4.7 }
+        { nombre: 'Carlos Repartidor Express', correo: 'carlos.reparto@kalo.cl', telefono: '+56966112233', vehiculo: 'Motocicleta', estado: 'En Reparto', calificacion: 4.9 },
+        { nombre: 'Matías Rojas', correo: 'matias.reparto@kalo.cl', telefono: '+56966445588', vehiculo: 'Bicicleta', estado: 'Disponible', calificacion: 4.7 }
     ]);
+    await crearCuentas(repartidores, 'repartidor');
     console.log(`✅ ${repartidores.length} repartidores creados`);
 
     // 5. Platillos con receta estandarizada (RF-06) e índice calculado (RF-09)
@@ -140,12 +153,14 @@ async function poblar() {
             nombre: 'Crema de Zapallo y Lentejas', categoria: 'Cena', precio: 5600, calorias: 340, m: [16, 52, 6], peso_porcion_g: 400,
             descripcion: 'Crema de zapallo camote con lentejas rojas y semillas de zapallo tostadas.', alergenos: 'Sin alérgenos declarados',
             restaurante_id: huerta._id,
+            stock: 0,
             ingredientes: [ing('Zapallo', 250, 'Hervido'), ing('Lenteja', 120, 'Hervido'), ing('Cebolla', 30, 'Salteado')]
         }),
         plato({
             nombre: 'Tostadas de Palta y Huevo', categoria: 'Snack', precio: 4800, calorias: 380, m: [16, 30, 22],
             descripcion: 'Pan integral con palta, huevo pochado y semillas.', alergenos: 'Gluten, huevo',
             imagen_url: IMG('1525351484163-7529414344d8'), restaurante_id: huerta._id,
+            stock: 4,
             ingredientes: [ing('Pan integral', 60), ing('Palta', 70), ing('Huevo', 55)]
         })
     ]);
@@ -196,6 +211,15 @@ async function poblar() {
             evaluacion: { similitud_foto: 4, gramaje_porcion: 4, velocidad_prep: 3, calificacion_general: 4, comentario: 'Rico, la porción un poco menor a lo esperado.', fecha_evaluacion: HACE(48) }
         })
     ]);
+    // Libro de pagos en PostgreSQL: un registro por cada pedido pagado
+    const { rows: [cuentaAndrea] } = await consultar('SELECT id FROM cuentas WHERE correo = $1', [andrea.correo]);
+    for (const p of await Pedido.find({}, 'codigo_pedido total pago').lean()) {
+        await consultar(
+            `INSERT INTO pagos (referencia, cuenta_id, codigo_pedido, concepto, monto, moneda, metodo, marca, ultimos4)
+             VALUES ($1, $2, $3, 'platillos', $4, 'CLP', $5, $6, $7)`,
+            [p.pago.referencia, cuentaAndrea.id, p.codigo_pedido, p.total, p.pago.metodo, p.pago.marca, p.pago.ultimos4]
+        );
+    }
     await Pedido.syncIndexes(); // crea los índices definidos en el modelo
     await Promise.all([Platillo.syncIndexes(), Restaurante.syncIndexes(), FotoCocina.syncIndexes(), Notificacion.syncIndexes()]);
     console.log('✅ 6 pedidos creados');
@@ -209,6 +233,7 @@ async function poblar() {
     console.log(`🔑 Cuentas de prueba (contraseña ${CLAVE_PRUEBA}): andrea@mail.com · contacto@greenbowl.cl · carlos.reparto@kalo.cl`);
     console.log('🎉 ¡Base de datos lista!');
     await mongoose.disconnect();
+    await cerrarPostgres();
 }
 
 poblar().catch(err => {

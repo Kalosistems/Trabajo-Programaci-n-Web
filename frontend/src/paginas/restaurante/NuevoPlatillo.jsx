@@ -15,7 +15,7 @@ export default function NuevoPlatillo() {
   const navegar = useNavigate();
   const { enviando, ejecutar } = useAccion();
   const [f, setF] = useState({
-    nombre: '', descripcion: '', categoria: 'Almuerzo', precio: '', calorias: '', imagen_url: '',
+    nombre: '', descripcion: '', categoria: 'Almuerzo', precio: '', calorias: '', imagen_url: '', stock: '30',
     proteinas: '', carbos: '', grasas: '', peso_porcion: '', alergenos: '', ingredientes_limpios: false,
     ingredientes: [{ nombre: '', cantidad_g: '', unidad: 'g', metodo_coccion: '' }]
   });
@@ -91,6 +91,8 @@ export default function NuevoPlatillo() {
                   <Form.Control.Feedback type="invalid">Debe ser mayor que 0.</Form.Control.Feedback></InputGroup></Form.Group></Col>
                 <Col md={4}><Form.Group controlId="nKcal"><Form.Label>Calorías *</Form.Label><InputGroup><Form.Control inputMode="numeric" value={f.calorias} onChange={c('calorias')} isInvalid={validado && !(+f.calorias > 0)} /><InputGroup.Text>kcal</InputGroup.Text>
                   <Form.Control.Feedback type="invalid">Debe ser mayor que 0.</Form.Control.Feedback></InputGroup></Form.Group></Col>
+                <Col md={4}><Form.Group controlId="nStock"><Form.Label>Porciones disponibles</Form.Label><Form.Control type="number" min={0} value={f.stock} onChange={c('stock')} />
+                  <Form.Text>Se descuentan con cada pedido.</Form.Text></Form.Group></Col>
                 <Col md={12}><Form.Group controlId="nImg"><Form.Label>Foto del platillo</Form.Label>
                   <div className="d-flex align-items-center gap-2 flex-wrap">
                     <Form.Control ref={archivoRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={elegirFoto} disabled={procesandoFoto} style={{ maxWidth: 420 }} />

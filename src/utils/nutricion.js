@@ -143,8 +143,10 @@ function listaAlimentos() {
 
 const ABSORCION_FRITURA_G = 5; // gramos de aceite que absorben 100 g de alimento frito
 
-// RF-08: recibe [{ nombre, cantidad_g, unidad, metodo_coccion }] y devuelve los totales del platillo
-function calcularNutrientes(ingredientes = []) {
+// RF-08: recibe [{ nombre, cantidad_g, unidad, metodo_coccion }] y devuelve los totales del platillo.
+// "externos" trae los valores por 100 g obtenidos de USDA FoodData Central (src/servicios/usda.js),
+// indexados por el nombre del alimento; si un alimento no está ahí, se usa la tabla de referencia.
+function calcularNutrientes(ingredientes = [], externos = {}) {
     const total = { calorias: 0, proteinas: 0, carbos: 0, grasas: 0 };
     const reconocidos = [];
     const noReconocidos = [];
@@ -153,20 +155,21 @@ function calcularNutrientes(ingredientes = []) {
         if (!ing.nombre || cantidad <= 0) continue;
         const a = buscarAlimento(ing.nombre);
         if (!a) { noReconocidos.push(ing.nombre); continue; }
+        const v = externos[a.nombre] || { kcal: a.kcal, p: a.p, c: a.c, g: a.g, fuente: 'Tabla Kalo' };
         const gramos = ing.unidad === 'ml' ? cantidad * a.densidad : cantidad;
         const f = gramos / 100;
-        let grasas = a.g * f;
-        let kcal = a.kcal * f;
+        let grasas = v.g * f;
+        let kcal = v.kcal * f;
         if (ing.metodo_coccion === 'Frito') { // la fritura agrega aceite
             const aceite = ABSORCION_FRITURA_G * f;
             grasas += aceite;
             kcal += aceite * 9;
         }
         total.calorias += kcal;
-        total.proteinas += a.p * f;
-        total.carbos += a.c * f;
+        total.proteinas += v.p * f;
+        total.carbos += v.c * f;
         total.grasas += grasas;
-        reconocidos.push({ ingrediente: ing.nombre, alimento: a.nombre, gramos: Math.round(gramos), kcal: Math.round(kcal) });
+        reconocidos.push({ ingrediente: ing.nombre, alimento: a.nombre, gramos: Math.round(gramos), kcal: Math.round(kcal), fuente: v.fuente, fdc_id: v.fdc_id || null });
     }
     const r1 = (n) => Math.round(n * 10) / 10;
     return {

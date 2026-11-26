@@ -43,6 +43,7 @@ router.delete('/planes/contrato', sesion, cliente, cli.cancelarPlan);     // RF-
 router.get('/platillos/mios', sesion, restaurante, rest.misPlatillos);
 router.post('/platillos', sesion, restaurante, c.crearPlatillo);          // RF-06, RF-08, RF-09
 router.put('/platillos/:id/estado', sesion, restaurante, rest.cambiarEstadoPlatillo);
+router.put('/platillos/:id/stock', sesion, restaurante, rest.cambiarStock);            // inventario
 router.put('/pedidos/estado', sesion, restaurante, c.actualizarEstadoPedido); // aceptar, rechazar, despachar (PIN)
 router.get('/repartidores', sesion, restaurante, c.obtenerRepartidores);
 router.get('/restaurantes/mi-local', sesion, restaurante, rest.verMiLocal);

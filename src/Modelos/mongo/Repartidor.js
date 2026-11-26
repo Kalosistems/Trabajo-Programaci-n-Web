@@ -13,11 +13,6 @@ const RepartidorSchema = new mongoose.Schema({
         lowercase: true,
         trim: true
     },
-    password_hash: {
-        type: String,
-        required: [true, 'La contraseña es obligatoria'],
-        select: false // hash bcrypt, no se devuelve en las consultas
-    },
     telefono: {
         type: String,
         required: [true, 'El teléfono de contacto es obligatorio']

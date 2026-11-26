@@ -5,13 +5,6 @@ import { api } from '../api/cliente';
 import { useSesion, INICIO_POR_ROL } from '../contexto/Sesion';
 import { useAccion, useTitulo } from '../hooks';
 
-// Cuentas de prueba que crea "npm run seed" (clave Kalo1234)
-const DEMOS = [
-  { rol: 'Cliente', correo: 'andrea@mail.com', icono: 'bag-heart' },
-  { rol: 'Restaurante', correo: 'contacto@greenbowl.cl', icono: 'shop' },
-  { rol: 'Repartidor', correo: 'carlos.reparto@kalo.cl', icono: 'scooter' }
-];
-
 export default function Entrar() {
   useTitulo('Iniciar sesión');
   const { rol, entrar, avisoVencida } = useSesion();
@@ -65,18 +58,6 @@ export default function Entrar() {
               </Button>
             </Form>
             <p className="text-center small mt-3 mb-0">¿No tienes cuenta? <Link to="/registro">Crear cuenta</Link></p>
-          </Card.Body>
-        </Card>
-        <Card className="mt-3 border-0 shadow-sm">
-          <Card.Body>
-            <p className="small fw-semibold mb-2"><i className="bi bi-lightning-charge-fill text-warning me-1" />Acceso rápido con cuentas de prueba (clave Kalo1234)</p>
-            <div className="d-grid gap-2">
-              {DEMOS.map((d) => (
-                <Button key={d.rol} variant="outline-primary" size="sm" disabled={enviando} onClick={() => iniciar(d.correo, 'Kalo1234')}>
-                  <i className={`bi bi-${d.icono} me-2`} />Entrar como {d.rol}
-                </Button>
-              ))}
-            </div>
           </Card.Body>
         </Card>
       </Container>

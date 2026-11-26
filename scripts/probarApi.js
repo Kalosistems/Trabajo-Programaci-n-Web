@@ -5,16 +5,22 @@
  */
 const BASE = process.env.API_URL || 'http://localhost:3000';
 let ok = 0, fallos = 0;
-// Respuesta de la pasarela de pago en modo de prueba (Kalo nunca recibe el número de tarjeta)
-const PAGO = { referencia: 'pay_sim_' + Date.now().toString(36) + 'abcdefghijk', marca: 'Visa', ultimos4: '1111', metodo: 'credito' };
+// Respuesta de la pasarela de pago en modo de prueba (Kalo nunca recibe el número de tarjeta).
+// Cada pago tiene su propia referencia: PostgreSQL no deja usar dos veces la misma.
+let nPago = 0;
+const nuevoPago = () => ({ referencia: 'pay_sim_' + Date.now().toString(36) + 'prueba' + String(++nPago).padStart(6, '0'), marca: 'Visa', ultimos4: '1111', metodo: 'credito' });
+const PAGO = nuevoPago();
 
+// "token" es la cookie de sesión (kalo_sesion=...): el JWT nunca viaja en el JSON
 async function llamar(metodo, ruta, { token, body, crudo } = {}) {
     const headers = { 'Content-Type': 'application/json' };
-    if (token) headers.Authorization = `Bearer ${token}`;
+    if (token) headers.Cookie = token;
     const res = await fetch(BASE + ruta, { method: metodo, headers, body: crudo ?? (body ? JSON.stringify(body) : undefined) });
     let data = null;
     try { data = await res.json(); } catch (e) {}
-    return { status: res.status, data };
+    const cookie = (res.headers.getSetCookie?.() || []).map(c => c.split(';')[0]).find(c => c.startsWith('kalo_sesion=') && c.length > 13) || null;
+    const banderas = (res.headers.getSetCookie?.() || []).join(';');
+    return { status: res.status, data, cookie, banderas };
 }
 
 function revisar(nombre, condicion, detalle = '') {
@@ -27,7 +33,7 @@ function revisar(nombre, condicion, detalle = '') {
 
     // Disponibilidad y seguridad
     let r0 = await llamar('GET', '/api/salud');
-    revisar('GET /api/salud → 200 con la base conectada (RNF-04)', r0.status === 200 && r0.data.base_de_datos === 'conectada');
+    revisar('GET /api/salud → 200 con MongoDB y PostgreSQL conectadas (RNF-04)', r0.status === 200 && r0.data.mongodb === 'conectada' && r0.data.postgresql === 'conectada');
     r0 = await llamar('POST', '/api/login', { body: { correo: { $ne: null }, password: 'x' } });
     revisar('inyección NoSQL { $ne } → 400 (RNF-10)', r0.status === 400 && r0.data.codigo === 'DATOS_NO_PERMITIDOS');
 
@@ -42,21 +48,28 @@ function revisar(nombre, condicion, detalle = '') {
     revisar('JSON mal formado → 400 JSON_INVALIDO', r.status === 400 && r.data.codigo === 'JSON_INVALIDO');
 
     const cli = await llamar('POST', '/api/login', { body: { correo: 'andrea@mail.com', password: 'Kalo1234' } });
-    revisar('login cliente → 200 con token y sin password_hash', cli.status === 200 && cli.data.token && !('password_hash' in cli.data.usuario));
+    revisar('login cliente → 200, cookie httpOnly y sin token ni contraseña en el JSON', cli.status === 200 && !!cli.cookie && /HttpOnly/i.test(cli.banderas) && /SameSite=Strict/i.test(cli.banderas) && !('token' in cli.data) && !JSON.stringify(cli.data).includes('password'));
     revisar('el login entrega el perfil descifrado con IMC y meta (RF-02, RF-03)', cli.data.usuario.perfil_biometrico.imc > 0 && cli.data.usuario.perfil_biometrico.meta_calorica_diaria >= 1200);
     const res_ = await llamar('POST', '/api/login', { body: { correo: 'contacto@greenbowl.cl', password: 'Kalo1234' } });
     revisar('login restaurante → 200 rol restaurante', res_.status === 200 && res_.data.usuario.rol === 'restaurante');
     const rep = await llamar('POST', '/api/login', { body: { correo: 'carlos.reparto@kalo.cl', password: 'Kalo1234' } });
     revisar('login repartidor → 200 rol repartidor', rep.status === 200 && rep.data.usuario.rol === 'repartidor');
-    const tC = cli.data.token, tR = res_.data.token, tD = rep.data.token;
+    const tC = cli.cookie, tR = res_.cookie, tD = rep.cookie;
+    r = await llamar('GET', '/api/sesion', { token: tC });
+    revisar('GET /api/sesion con la cookie → usuario conectado (verificado en PostgreSQL)', r.status === 200 && r.data.usuario.correo === 'andrea@mail.com');
+    const otraSesion = (await llamar('POST', '/api/login', { body: { correo: 'andrea@mail.com', password: 'Kalo1234' } })).cookie;
+    r = await llamar('POST', '/api/logout', { token: otraSesion });
+    revisar('cerrar sesión → 200', r.status === 200);
+    r = await llamar('GET', '/api/sesion', { token: otraSesion });
+    revisar('la sesión cerrada queda revocada en PostgreSQL → 401 SESION_CERRADA', r.status === 401 && r.data.codigo === 'SESION_CERRADA');
 
     // Registro
     const correoNuevo = `prueba${Date.now()}@mail.com`;
     r = await llamar('POST', '/api/registro', { body: { nombre: 'Prueba', correo: correoNuevo, password: 'debil', peso: 70, altura: 1.7, edad: 30 } });
     revisar('registro con contraseña débil → 422', r.status === 422 && r.data.codigo === 'CLAVE_DEBIL');
     r = await llamar('POST', '/api/registro', { body: { nombre: 'Prueba', correo: correoNuevo, password: 'Segura123', peso: 70, altura: 1.7, edad: 30, genero: 'Masculino', nivel_actividad: 'moderado', objetivo: 'mantener' } });
-    revisar('registro cliente → 201 con meta de Mifflin-St Jeor (2.500 kcal)', r.status === 201 && !!r.data.token && r.data.usuario.perfil_biometrico.meta_calorica_diaria === 2500, JSON.stringify(r.data.usuario && r.data.usuario.perfil_biometrico));
-    const tNuevo = r.data.token, idNuevo = r.data.usuario && r.data.usuario.id;
+    revisar('registro cliente → 201 con meta de Mifflin-St Jeor (2.500 kcal)', r.status === 201 && !!r.cookie && r.data.usuario.perfil_biometrico.meta_calorica_diaria === 2500, JSON.stringify(r.data.usuario && r.data.usuario.perfil_biometrico));
+    const tNuevo = r.cookie, idNuevo = r.data.usuario && r.data.usuario.id;
     r = await llamar('POST', '/api/registro', { body: { nombre: 'Prueba', correo: correoNuevo, password: 'Segura123', peso: 70, altura: 1.7, edad: 30 } });
     revisar('registro con correo repetido → 409', r.status === 409 && r.data.codigo === 'CORREO_REGISTRADO');
     r = await llamar('POST', '/api/login', { body: { correo: correoNuevo, password: 'Segura123' } });
@@ -76,7 +89,7 @@ function revisar(nombre, condicion, detalle = '') {
     r = await llamar('GET', '/api/mongo/restaurantes/' + local._id);
     revisar('perfil público del local con galería de la cocina (RF-07)', r.status === 200 && r.data.datos.fotos.length >= 1 && r.data.datos.platillos.length >= 1 && !r.data.datos.restaurante.correo);
     r = await llamar('POST', '/api/mongo/nutricion/calcular', { body: { ingredientes: [{ nombre: 'Pechuga de pollo', cantidad_g: 150, metodo_coccion: 'Plancha' }, { nombre: 'Arroz', cantidad_g: 100 }] } });
-    revisar('cálculo nutricional automático (RF-08)', r.status === 200 && r.data.datos.calorias === 378 && r.data.datos.proteinas > 40, JSON.stringify(r.data).slice(0, 200));
+    revisar('cálculo nutricional con USDA FoodData Central o tabla de respaldo (RF-08)', r.status === 200 && r.data.datos.calorias > 330 && r.data.datos.calorias < 420 && r.data.datos.proteinas > 40 && !!r.data.datos.fuente, JSON.stringify(r.data).slice(0, 200));
     r = await llamar('GET', '/api/mongo/platillos?maxCalorias=abc');
     revisar('GET platillos con parámetro inválido → 400', r.status === 400);
     r = await llamar('GET', '/api/mongo/platillos?busqueda=(');
@@ -95,28 +108,30 @@ function revisar(nombre, condicion, detalle = '') {
     revisar('LEFT JOIN clientes con o sin pedidos', r.status === 200 && r.data.datos.some(u => u.cantidad_pedidos === 0));
     r = await llamar('GET', '/api/mongo/usuarios', { token: tC });
     revisar('GET usuarios sin correo ni contraseña', r.status === 200 && !r.data.datos.some(u => u.correo || u.password_hash));
-    r = await llamar('GET', '/api/mongo/pedidos', { token: 'token-falso' });
+    r = await llamar('GET', '/api/mongo/pedidos', { token: 'kalo_sesion=token-falso' });
     revisar('token inválido → 401 TOKEN_INVALIDO', r.status === 401 && r.data.codigo === 'TOKEN_INVALIDO');
 
     // Flujo del pedido
     const bowl = platillos.find(p => p.nombre.includes('Salmón'));
     const wrap = platillos.find(p => p.nombre.includes('Wrap'));
     const pechuga = platillos.find(p => p.nombre.includes('Pechuga'));
-    r = await llamar('POST', '/api/mongo/pedidos', { token: tR, body: { items: [{ platillo_id: bowl._id, cantidad: 1 }], pago: PAGO } });
+    r = await llamar('POST', '/api/mongo/pedidos', { token: tR, body: { items: [{ platillo_id: bowl._id, cantidad: 1 }], pago: nuevoPago() } });
     revisar('restaurante no puede comprar → 403', r.status === 403 && r.data.codigo === 'SIN_PERMISO');
     r = await llamar('POST', '/api/mongo/pedidos', { token: tC, body: { items: [] } });
     revisar('carrito vacío → 400', r.status === 400 && r.data.codigo === 'CARRITO_VACIO');
-    r = await llamar('POST', '/api/mongo/pedidos', { token: tC, body: { items: [{ platillo_id: bowl._id }, { platillo_id: pechuga._id }], pago: PAGO } });
+    r = await llamar('POST', '/api/mongo/pedidos', { token: tC, body: { items: [{ platillo_id: bowl._id }, { platillo_id: pechuga._id }], pago: nuevoPago() } });
     revisar('platillos de dos locales → 422', r.status === 422 && r.data.codigo === 'VARIOS_RESTAURANTES');
     r = await llamar('POST', '/api/mongo/pedidos', { token: tC, body: { items: [{ platillo_id: bowl._id }] } });
     revisar('pedido sin pago de la pasarela → 402 (RNF-07)', r.status === 402 && r.data.codigo === 'PAGO_REQUERIDO');
-    r = await llamar('POST', '/api/mongo/pedidos', { token: tC, body: { items: [{ platillo_id: bowl._id }], pago: { ...PAGO, numero: '4111 1111 1111 1111' } } });
+    r = await llamar('POST', '/api/mongo/pedidos', { token: tC, body: { items: [{ platillo_id: bowl._id }], pago: { ...nuevoPago(), numero: '4111 1111 1111 1111' } } });
     revisar('enviar un número de tarjeta a Kalo → 422 (RNF-07)', r.status === 422 && r.data.codigo === 'DATOS_TARJETA_NO_PERMITIDOS');
     r = await llamar('POST', '/api/mongo/pedidos', { token: tC, body: { items: [{ platillo_id: bowl._id, cantidad: 2, precio: 1 }, { platillo_id: wrap._id, cantidad: 1 }], pago: PAGO } });
     const totalEsperado = bowl.precio * 2 + wrap.precio + 1490;
     revisar('crear pedido → 201 "Pagado", total calculado en el servidor, sin PIN', r.status === 201 && r.data.pedido.estado === 'Pagado' && r.data.pedido.total === totalEsperado && !r.data.pedido.pin_seguridad, JSON.stringify(r.data).slice(0, 200));
     revisar('el pedido guarda las calorías (RF-03)', r.data.pedido.total_calorias === bowl.calorias * 2 + wrap.calorias);
     const codigo = r.data.pedido.codigo_pedido;
+    r = await llamar('POST', '/api/mongo/pedidos', { token: tC, body: { items: [{ platillo_id: bowl._id }], pago: PAGO } });
+    revisar('usar dos veces el mismo pago → 409 PAGO_YA_USADO (UNIQUE en PostgreSQL)', r.status === 409 && r.data.codigo === 'PAGO_YA_USADO');
     r = await llamar('GET', '/api/mongo/notificaciones', { token: tR });
     revisar('el restaurante recibe el aviso de nuevo pedido (RF-20)', r.status === 200 && r.data.datos.some(n => n.tipo === 'nuevo_pedido' && n.codigo_pedido === codigo));
     r = await llamar('PUT', '/api/mongo/pedidos/estado', { token: tR, body: { codigo_pedido: codigo, nuevo_estado: 'En Preparación' } });
@@ -177,6 +192,16 @@ function revisar(nombre, condicion, detalle = '') {
     const idEnsalada = r.data.platillo._id;
     r = await llamar('POST', '/api/mongo/platillos', { token: tR, body: { nombre: 'Bowl calculado', precio: 6990, calcular_nutricion: true, ingredientes: [{ nombre: 'Pollo', cantidad_g: 150, metodo_coccion: 'Plancha' }, { nombre: 'Quinoa', cantidad_g: 100, metodo_coccion: 'Hervido' }] } });
     revisar('platillo sin calorías: Kalo las calcula con los ingredientes (RF-08)', r.status === 201 && r.data.platillo.nutricion_calculada && r.data.platillo.calorias > 300);
+    r = await llamar('PUT', '/api/mongo/platillos/' + idEnsalada + '/stock', { token: tR, body: { stock: 1 } });
+    revisar('el local ajusta el stock de un platillo', r.status === 200 && r.data.platillo.stock === 1);
+    r = await llamar('POST', '/api/mongo/pedidos', { token: tC, body: { items: [{ platillo_id: idEnsalada, cantidad: 2 }], pago: nuevoPago() } });
+    revisar('pedir más porciones de las que quedan → 409 SIN_STOCK', r.status === 409 && r.data.codigo === 'SIN_STOCK');
+    r = await llamar('POST', '/api/mongo/pedidos', { token: tC, body: { items: [{ platillo_id: idEnsalada, cantidad: 1 }], pago: nuevoPago() } });
+    const conStock = await llamar('GET', '/api/mongo/platillos/mios', { token: tR });
+    revisar('comprar descuenta el stock (queda 0 = Agotado)', r.status === 201 && conStock.data.datos.find(p => p._id === idEnsalada).stock === 0);
+    r = await llamar('PUT', '/api/mongo/pedidos/estado', { token: tR, body: { codigo_pedido: r.data.pedido.codigo_pedido, nuevo_estado: 'Cancelado' } });
+    const devuelto = await llamar('GET', '/api/mongo/platillos/mios', { token: tR });
+    revisar('rechazar el pedido devuelve la porción al stock', r.status === 200 && devuelto.data.datos.find(p => p._id === idEnsalada).stock === 1);
     r = await llamar('PUT', '/api/mongo/platillos/' + idEnsalada + '/estado', { token: tR, body: { activo: false } });
     revisar('retirar un platillo del menú', r.status === 200 && r.data.platillo.activo === false);
     r = await llamar('POST', '/api/mongo/restaurantes/fotos', { token: tR, body: { imagen: 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ==', descripcion: 'Mesón de prueba' } });
@@ -189,9 +214,9 @@ function revisar(nombre, condicion, detalle = '') {
 
     // Planes nutricionales (RF-21)
     const planes = (await llamar('GET', '/api/mongo/planes')).data.datos;
-    r = await llamar('POST', '/api/mongo/planes/contratar', { token: tNuevo, body: { plan_id: planes[0]._id, pago: PAGO } });
+    r = await llamar('POST', '/api/mongo/planes/contratar', { token: tNuevo, body: { plan_id: planes[0]._id, pago: nuevoPago() } });
     revisar('contratar plan → 201 y la meta pasa a la del plan', r.status === 201 && r.data.usuario.perfil_biometrico.meta_calorica_diaria === planes[0].calorias_diarias && r.data.pedido.plan_adquirido.nombre_plan === planes[0].nombre_plan);
-    r = await llamar('POST', '/api/mongo/planes/contratar', { token: tNuevo, body: { plan_id: planes[0]._id, pago: PAGO } });
+    r = await llamar('POST', '/api/mongo/planes/contratar', { token: tNuevo, body: { plan_id: planes[0]._id, pago: nuevoPago() } });
     revisar('contratar el mismo plan otra vez → 409', r.status === 409);
     r = await llamar('DELETE', '/api/mongo/planes/contrato', { token: tNuevo });
     revisar('cancelar el plan → la meta vuelve a la recomendada', r.status === 200 && !r.data.usuario.plan_activo && r.data.usuario.perfil_biometrico.meta_calorica_diaria === 2500);
@@ -205,6 +230,8 @@ function revisar(nombre, condicion, detalle = '') {
     revisar('borrar la cuenta de otro → 403', r.status === 403);
     r = await llamar('DELETE', `/api/mongo/usuarios/${idNuevo}`, { token: tNuevo });
     revisar('borrar mi cuenta → 200', r.status === 200);
+    r = await llamar('POST', '/api/login', { body: { correo: correoNuevo, password: 'Segura123' } });
+    revisar('la cuenta borrada ya no existe en PostgreSQL → 401', r.status === 401);
 
     r = await llamar('GET', '/api/mongo/no-existe');
     revisar('ruta inexistente → 404 JSON', r.status === 404 && r.data.codigo === 'RUTA_NO_ENCONTRADA');

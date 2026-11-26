@@ -1,6 +1,6 @@
 // Cliente HTTP de Kalo: todas las pantallas llaman a la API REST a través de estas funciones.
 // La API responde { exito: true, ... } o { exito: false, codigo, mensaje } (ver docs/API.md).
-const CLAVE_SESION = 'kalo_sesion';
+// La sesión va en una cookie httpOnly que pone el servidor: este código NUNCA ve ni guarda el token.
 
 export class ErrorApi extends Error {
   constructor(status, codigo, mensaje) {
@@ -10,26 +10,15 @@ export class ErrorApi extends Error {
   }
 }
 
-export function leerSesion() {
-  try { return JSON.parse(localStorage.getItem(CLAVE_SESION)) || null; } catch { return null; }
-}
-export function guardarSesion(sesion) {
-  try {
-    if (sesion) localStorage.setItem(CLAVE_SESION, JSON.stringify(sesion));
-    else localStorage.removeItem(CLAVE_SESION);
-  } catch { /* modo privado: la sesión dura mientras la pestaña esté abierta */ }
-}
+const SESION_TERMINADA = ['NO_AUTENTICADO', 'TOKEN_INVALIDO', 'SESION_VENCIDA', 'SESION_CERRADA'];
 
 async function pedir(metodo, ruta, cuerpo) {
-  const sesion = leerSesion();
   let respuesta;
   try {
     respuesta = await fetch(`/api${ruta}`, {
       method: metodo,
-      headers: {
-        ...(cuerpo !== undefined ? { 'Content-Type': 'application/json' } : {}),
-        ...(sesion?.token ? { Authorization: `Bearer ${sesion.token}` } : {})
-      },
+      credentials: 'same-origin', // el navegador agrega la cookie de sesión por su cuenta
+      headers: cuerpo !== undefined ? { 'Content-Type': 'application/json' } : {},
       body: cuerpo !== undefined ? JSON.stringify(cuerpo) : undefined
     });
   } catch {
@@ -41,8 +30,8 @@ async function pedir(metodo, ruta, cuerpo) {
 
   if (!respuesta.ok || !json?.exito) {
     const err = new ErrorApi(respuesta.status, json?.codigo || 'ERROR', json?.mensaje || `El servidor respondió con error ${respuesta.status}.`);
-    // Token vencido o inválido: la app vuelve al inicio de sesión
-    if (respuesta.status === 401 && sesion?.token && ['NO_AUTENTICADO', 'TOKEN_INVALIDO', 'SESION_VENCIDA'].includes(err.codigo)) {
+    // Sesión vencida o cerrada: la app vuelve al inicio de sesión
+    if (respuesta.status === 401 && SESION_TERMINADA.includes(err.codigo) && ruta !== '/sesion') {
       window.dispatchEvent(new CustomEvent('kalo:sesion-vencida', { detail: err.message }));
     }
     throw err;
@@ -61,6 +50,8 @@ export const api = {
   // Autenticación
   login: (correo, password) => pedir('POST', '/login', { correo, password }),
   registro: (datos) => pedir('POST', '/registro', datos),
+  sesion: () => pedir('GET', '/sesion'),
+  logout: () => pedir('POST', '/logout'),
 
   // Catálogo (público)
   platillos: (filtros) => pedir('GET', `/mongo/platillos${qs(filtros)}`),
@@ -90,6 +81,7 @@ export const api = {
   crearPlatillo: (datos) => pedir('POST', '/mongo/platillos', datos),
   misPlatillos: () => pedir('GET', '/mongo/platillos/mios'),
   estadoPlatillo: (id, activo) => pedir('PUT', `/mongo/platillos/${id}/estado`, { activo }),
+  cambiarStock: (id, stock) => pedir('PUT', `/mongo/platillos/${id}/stock`, { stock }),
   miLocal: () => pedir('GET', '/mongo/restaurantes/mi-local'),
   subirFotoCocina: (datos) => pedir('POST', '/mongo/restaurantes/fotos', datos),
   eliminarFotoCocina: (id) => pedir('DELETE', `/mongo/restaurantes/fotos/${id}`),

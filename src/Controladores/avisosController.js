@@ -3,7 +3,8 @@
  */
 const Notificacion = require('../Modelos/mongo/Notificacion');
 const { error, falla, verificarConexion, esId } = require('../utils/respuestas');
-const { calcularNutrientes, listaAlimentos, calcularIndiceTransparencia, METODOS_COCCION } = require('../utils/nutricion');
+const { listaAlimentos, calcularIndiceTransparencia, METODOS_COCCION } = require('../utils/nutricion');
+const { calcularConUsda } = require('../servicios/usda');
 
 // GET /api/mongo/notificaciones  (cualquier rol: solo las propias)
 exports.misNotificaciones = async (req, res) => {
@@ -45,13 +46,13 @@ exports.alimentos = (req, res) => {
 
 // POST /api/mongo/nutricion/calcular  { ingredientes: [...], ...datos del platillo }
 // RF-08: el restaurante envía la receta y recibe calorías y macros calculados, y el índice que tendría.
-exports.calcular = (req, res) => {
+exports.calcular = async (req, res) => {
     const { ingredientes } = req.body || {};
     if (!Array.isArray(ingredientes) || !ingredientes.length) {
         return error(res, 400, 'DATOS_FALTANTES', 'Agrega al menos un ingrediente con su cantidad.');
     }
     if (ingredientes.length > 30) return error(res, 422, 'DEMASIADOS_INGREDIENTES', 'Máximo 30 ingredientes.');
-    const n = calcularNutrientes(ingredientes);
+    const n = await calcularConUsda(ingredientes);
     if (!n.reconocidos.length) {
         return error(res, 422, 'SIN_DATOS_NUTRICIONALES', 'No reconocimos ningún ingrediente. Revisa los nombres o ingresa las calorías a mano.');
     }
@@ -62,7 +63,7 @@ exports.calcular = (req, res) => {
         mensaje: n.no_reconocidos.length
             ? `Calculado con ${n.reconocidos.length} ingrediente(s). No reconocimos: ${n.no_reconocidos.join(', ')}.`
             : `Calculado con los ${n.reconocidos.length} ingredientes.`,
-        fuente: 'Tabla de referencia Kalo (valores por 100 g basados en USDA FoodData Central)',
+        fuente: n.fuente,
         datos: { ...n, indice_transparencia: indice, detalle_indice: detalle }
     });
 };
