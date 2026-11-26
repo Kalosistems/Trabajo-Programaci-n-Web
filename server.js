@@ -10,7 +10,9 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
+const cookieParser = require('cookie-parser');
 const { conectarMongo, estadoConexion } = require('./src/config/mongo');
+const { conectarPostgres, estadoPostgres, cerrarPostgres } = require('./src/config/postgres');
 const { sanitizar } = require('./src/middleware/sanitizar');
 const { limiteGeneral } = require('./src/middleware/limites');
 const { manejarErrores, rutaNoEncontrada } = require('./src/middleware/errores');
@@ -22,7 +24,8 @@ if (!process.env.JWT_SECRET) {
 }
 
 const app = express();
-conectarMongo();
+conectarMongo();      // base NO relacional: MongoDB Atlas
+conectarPostgres();   // base relacional: PostgreSQL (Railway)
 
 // Middlewares
 app.disable('x-powered-by');
@@ -43,7 +46,8 @@ app.use(helmet({
     crossOriginEmbedderPolicy: false
 }));
 app.use(compression());                      // gzip: el catálogo pesa ~70 % menos (RNF-03)
-app.use(cors({ origin: process.env.CORS_ORIGEN || true }));
+app.use(cors({ origin: process.env.CORS_ORIGEN || true, credentials: true }));
+app.use(cookieParser()); // lee la cookie httpOnly de la sesión
 // Las rutas que reciben fotos (platillo y cocina) admiten hasta 1 MB: la foto ya viene comprimida
 app.use(['/api/mongo/platillos', '/api/mongo/restaurantes/fotos'], express.json({ limit: '1mb' }));
 app.use(express.json({ limit: '100kb' }));   // límite del cuerpo del resto de las solicitudes
@@ -55,9 +59,11 @@ app.use(express.static(FRONT, { index: false, maxAge: '1h' }));
 // Estado del servicio (RNF-04): lo consulta el monitor de disponibilidad de Railway / UptimeRobot.
 // Va antes del límite de solicitudes para que el monitor nunca reciba 429.
 app.get('/api/salud', (req, res) => {
-    const bd = estadoConexion();
-    res.status(bd === 'conectada' ? 200 : 503).json({
-        exito: bd === 'conectada', servicio: 'kalo-api', base_de_datos: bd,
+    const mongo = estadoConexion();
+    const postgres = estadoPostgres();
+    const ok = mongo === 'conectada' && postgres === 'conectada';
+    res.status(ok ? 200 : 503).json({
+        exito: ok, servicio: 'kalo-api', mongodb: mongo, postgresql: postgres,
         activo_desde_s: Math.round(process.uptime()), fecha: new Date().toISOString()
     });
 });
@@ -89,6 +95,6 @@ const servidor = app.listen(PORT, () => {
 process.on('unhandledRejection', (e) => console.error('Promesa rechazada sin manejar:', e));
 process.on('SIGTERM', () => {
     console.log('Cerrando el servidor…');
-    servidor.close(() => process.exit(0));
+    servidor.close(async () => { await cerrarPostgres(); process.exit(0); });
     setTimeout(() => process.exit(0), 10000).unref();
 });
