@@ -1,7 +1,7 @@
 {
   "name": "kalo-nutridelivery",
   "version": "4.0.0",
-  "description": "Kalo: delivery nutricional transparente (React + Bootstrap, Node.js + Express, MongoDB Atlas)",
+  "description": "Kalo: delivery nutricional transparente (React + Bootstrap, Node.js + Express, MongoDB Atlas + PostgreSQL)",
   "main": "server.js",
   "scripts": {
     "postinstall": "npm --prefix frontend install",
@@ -10,9 +10,9 @@
     "dev": "node --watch server.js",
     "dev:front": "npm --prefix frontend run dev",
     "seed": "node scripts/poblarAtlas.js",
-    "migrar-claves": "node scripts/migrarClaves.js",
     "test:api": "node scripts/probarApi.js",
-    "cifrar-salud": "node scripts/cifrarSalud.js"
+    "cifrar-salud": "node scripts/cifrarSalud.js",
+    "migrar-cuentas": "node scripts/migrarCuentas.js"
   },
   "keywords": [
     "kalo",
@@ -29,12 +29,14 @@
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "compression": "^1.8.2",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^16.4.5",
     "express": "^5.2.1",
     "express-rate-limit": "^7.5.0",
     "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.3.0"
+    "mongoose": "^8.3.0",
+    "pg": "^8.23.1"
   }
 }
