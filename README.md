@@ -29,10 +29,11 @@
 # 1. Instalar dependencias (también instala las del frontend)
 npm install
 
-# 2. Crear el archivo .env a partir del ejemplo y completar MONGO_URI y JWT_SECRET
+# 2. Crear el archivo .env a partir del ejemplo y completar MONGO_URI, DATABASE_URL, JWT_SECRET,
+#    DATOS_SALUD_CLAVE y USDA_API_KEY
 cp .env.example .env
 
-# 3. Cargar los datos de prueba (BORRA y vuelve a crear las colecciones)
+# 3. Cargar los datos de prueba en MongoDB y PostgreSQL (BORRA lo que haya)
 npm run seed
 
 # 4. Compilar el frontend React (queda en frontend/dist)
@@ -41,19 +42,31 @@ npm run build
 # 5. Iniciar el servidor → http://localhost:3000
 npm start
 
-# (Opcional) probar la API con el servidor corriendo: 75 pruebas
+# (Opcional) probar la API con el servidor corriendo: 84 pruebas
 npm run test:api
 ```
 
 **Para programar el frontend con recarga automática**, usa dos terminales: `npm run dev` (API en el puerto 3000) y `npm run dev:front` (app en http://localhost:5173).
 
-**Railway:** Build `npm install && npm run build`, Start `npm start`, variables `MONGO_URI` y `JWT_SECRET`.
+**Railway:** Build `npm install && npm run build`, Start `npm start`. Variables del servicio: `MONGO_URI`, `DATABASE_URL` (referencia a la base PostgreSQL del mismo proyecto: `${{Postgres.DATABASE_URL}}`), `JWT_SECRET`, `DATOS_SALUD_CLAVE` y `USDA_API_KEY`.
+
+### Dos bases de datos y un servicio en la nube
+
+| Servicio | Qué guarda o hace | Dónde está en el código |
+|---|---|---|
+| **PostgreSQL** (relacional, Railway) | Cuentas (correo, rol, hash bcrypt), sesiones de los JWT, libro de pagos, auditoría de accesos y caché de USDA. Consultas parametrizadas (`$1, $2`). | `src/config/postgres.js`, `src/Modelos/sql/` |
+| **MongoDB Atlas** (no relacional) | Perfiles (salud cifrada), catálogo con stock, pedidos, fotos de la cocina y avisos. | `src/config/mongo.js`, `src/Modelos/mongo/` |
+| **USDA FoodData Central** (API en la nube) | Calorías y macronutrientes de cada ingrediente (RF-08). | `src/servicios/usda.js` |
+
+La sesión viaja en una cookie `httpOnly`: el navegador no puede leer el token y la contraseña nunca se muestra ni se guarda en el navegador.
+
+Si en Atlas hay cuentas creadas antes de esta versión, `npm run migrar-cuentas` pasa sus credenciales a PostgreSQL (una sola vez).
 
 ### Estructura del frontend
 
 ```
 frontend/src/
-├── api/cliente.js        → todas las llamadas a la API (token JWT y errores)
+├── api/cliente.js        → todas las llamadas a la API (la sesión va en una cookie httpOnly)
 ├── contexto/             → sesión, carrito y avisos (React Context)
 ├── componentes/          → layouts por rol (cliente, restaurante, repartidor) y piezas comunes
 └── paginas/              → pantallas: cliente/, restaurante/, repartidor/
@@ -61,7 +74,6 @@ frontend/src/
 
 Cuentas de prueba (contraseña `Kalo1234`): `andrea@mail.com` (cliente), `contacto@greenbowl.cl` (restaurante) y `carlos.reparto@kalo.cl` (repartidor).
 
-Si en Atlas quedaron cuentas creadas antes de esta versión con la contraseña en texto plano, `npm run migrar-claves` las convierte a hash bcrypt.
 
 > ⚠️ Nunca subas el archivo `.env`: contiene la clave de MongoDB Atlas.
 

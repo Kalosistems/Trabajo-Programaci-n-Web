@@ -1,10 +1,10 @@
 # API REST de Kalo · Documentación
 
-Versión 2.1 (Etapa 2 · MongoDB Atlas) · Grupo 15
+Versión 3.0 (Entrega final · MongoDB Atlas + PostgreSQL) · Grupo 15
 
 ## 1. Introducción
 
-La API de Kalo conecta la aplicación web (carpeta `public/`) con la base de datos MongoDB Atlas. La usan tres roles: el **cliente** (comprador), el **restaurante** y el **repartidor**. Con ella se puede ver el catálogo con calorías y macronutrientes, comprar, despachar un pedido, entregarlo con un PIN de 4 dígitos y evaluarlo.
+La API de Kalo conecta la aplicación web (carpeta `frontend/`, React) con **dos bases de datos al mismo tiempo**: **PostgreSQL** (relacional: cuentas, sesiones, pagos y accesos) y **MongoDB Atlas** (no relacional: perfiles, catálogo, pedidos, fotos y avisos). Además usa un servicio en la nube, **USDA FoodData Central**, para el cálculo nutricional. La usan tres roles: el **cliente** (comprador), el **restaurante** y el **repartidor**. Con ella se puede ver el catálogo con calorías y macronutrientes, comprar, despachar un pedido, entregarlo con un PIN de 4 dígitos y evaluarlo.
 
 - **URL base:** `http://localhost:3000` en desarrollo (en Railway, la URL del despliegue).
 - **Prefijos:** `/api` para la autenticación y `/api/mongo` para los recursos.
@@ -24,39 +24,46 @@ Las consultas de lectura también devuelven `operacion` y `consultaMQL` (la cons
 ## 2. Autenticación y autorización
 
 1. El usuario inicia sesión con `POST /api/login` (o crea su cuenta con `POST /api/registro`).
-2. El servidor busca la cuenta **solo por correo** en `usuarios`, `restaurantes` y `repartidores`. Después compara la contraseña con `bcrypt.compare()`: las contraseñas se guardan como hash bcrypt de costo 10, nunca en texto plano.
-3. Si coincide, responde con un **token JWT** firmado con `JWT_SECRET`. El token dura 8 horas (`JWT_EXPIRA`) y lleva el `id`, el `rol` y el `nombre`.
-4. Las rutas protegidas exigen la cabecera:
+2. El servidor busca la cuenta **solo por correo** en la tabla `cuentas` de **PostgreSQL** (consulta parametrizada `WHERE correo = $1`) y compara la contraseña con `bcrypt.compare()`. Las contraseñas se guardan como hash bcrypt de costo 10, nunca en texto plano, y ya no están en MongoDB.
+3. Si coincide, crea una fila en la tabla `sesiones` (con el identificador `jti` del token) y firma un **token JWT** con `JWT_SECRET`, que dura 8 horas.
+4. **El token no se entrega en el JSON**: va en una cookie `kalo_sesion` con las banderas `HttpOnly` (el JavaScript del navegador no puede leerla), `SameSite=Strict` (no viaja desde otros sitios), `Secure` en HTTPS y `Path=/api`. El navegador la envía solo en cada solicitud.
+5. En cada ruta protegida el servidor verifica la firma del token **y** que su sesión siga vigente en PostgreSQL (no revocada, no vencida, cuenta activa). `POST /api/logout` revoca la sesión al instante.
+6. Cada inicio de sesión, exitoso o fallido, queda en la tabla `accesos`.
 
-```
-Authorization: Bearer <token>
-```
+> Para Postman o Thunder Client: después del login, el cliente HTTP guarda la cookie y la envía sola en las siguientes solicitudes.
 
-**Autorización por rol.** Cada ruta indica qué rol puede usarla. El servidor saca el usuario del token, no del cuerpo de la solicitud. Así, un cliente no puede comprar a nombre de otro y un restaurante no puede mover pedidos de otro local. Si falta el token o no es válido, responde **401**; si el rol no corresponde, **403**.
+**Autorización por rol.** Cada ruta indica qué rol puede usarla. El servidor saca el usuario del token, no del cuerpo de la solicitud. Así, un cliente no puede comprar a nombre de otro y un restaurante no puede mover pedidos de otro local. Si falta la cookie, el token no es válido o la sesión fue cerrada, responde **401**; si el rol no corresponde, **403**.
 
 | Acceso | Rutas |
 |---|---|
-| Público | login, registro, `GET` platillos, platillos-fit, platillos-con-restaurante, planes |
+| Público | login, registro, `GET` sesion, platillos, platillos-fit, platillos-con-restaurante, planes, restaurantes, nutricion |
+| Con sesión (cualquier rol) | `POST` logout, notificaciones |
 | Con sesión (cualquier rol) | estadisticas, usuarios, usuarios-pedidos, `GET` pedidos (cada rol ve solo sus pedidos) |
 | Cliente | `POST` pedidos, evaluar, `PUT` usuarios/biometrico, `DELETE` usuarios/:id (solo la propia cuenta) |
-| Restaurante | `POST` platillos, `PUT` pedidos/estado, `GET` repartidores, `PUT` restaurantes/mi-local |
+| Restaurante | `POST` platillos, `PUT` platillos/:id/estado y /stock, `PUT` pedidos/estado, `GET` repartidores, mi-local y fotos de la cocina |
 | Repartidor | `PUT` pedidos/aceptar, `POST` pedidos/validar-pin |
 
 ## 3. Endpoints
 
-Leyenda: 🔓 público · 🔐 con token · (rol) rol exigido.
+Leyenda: 🔓 público · 🔐 con sesión (cookie) · (rol) rol exigido.
 
 ### 3.1 Autenticación
 
 #### `POST /api/login` 🔓
-Inicia sesión y entrega el token.
+Inicia sesión: verifica la cuenta en PostgreSQL y deja el token en la cookie httpOnly `kalo_sesion`.
 
 | Parámetro (cuerpo) | Tipo | Obligatorio | Descripción |
 |---|---|---|---|
 | correo | string | sí | Correo de la cuenta (no distingue mayúsculas). |
 | password | string | sí | Contraseña. |
 
-Respuestas: **200** con `token`, `expira_en` y `usuario` (id, nombre, correo, teléfono, rol y los datos propios del rol, sin `password_hash`) · **400** DATOS_FALTANTES · **401** CREDENCIALES_INVALIDAS · **429** · **503**.
+Respuestas: **200** con `expira_en` y `usuario` (id, nombre, correo, teléfono, rol y los datos propios del rol), más la cabecera `Set-Cookie`. El cuerpo **no** trae el token ni la contraseña · **400** DATOS_FALTANTES · **401** CREDENCIALES_INVALIDAS · **429** · **503**.
+
+#### `POST /api/logout` 🔐
+Revoca la sesión en PostgreSQL (`sesiones.revocada = TRUE`) y borra la cookie. **200** · **401**.
+
+#### `GET /api/sesion` 🔓
+Dice quién está conectado según la cookie: `{ usuario }`, o `{ usuario: null }` si no hay cookie. El frontend la consulta al abrir la app. **200** · **401** SESION_CERRADA o SESION_VENCIDA.
 
 #### `POST /api/registro` 🔓
 Crea una cuenta y deja la sesión iniciada.
@@ -69,6 +76,7 @@ Crea una cuenta y deja la sesión iniciada.
 | especialidad, direccion | string | restaurante | Datos del local. |
 | telefono, vehiculo | string | repartidor | `vehiculo`: Bicicleta, Motocicleta o Automóvil. |
 
+Crea el perfil en MongoDB y la cuenta (correo, rol y hash) en PostgreSQL; si PostgreSQL falla, se deshace el perfil.
 Respuestas: **201** igual que el login · **400** DATOS_FALTANTES · **409** CORREO_REGISTRADO · **422** CORREO_INVALIDO, CLAVE_DEBIL, BIOMETRIA_INVALIDA, TELEFONO_INVALIDO o ROL_INVALIDO · **429**.
 
 El `telefono` (obligatorio para repartidor, opcional para restaurante y cliente) debe tener exactamente 11 dígitos. Se permite un `+` al inicio y espacios o guiones (`+569 1234 5678`), y se guarda sin espacios ni guiones (`+56912345678`).
@@ -109,11 +117,11 @@ Devuelve la imagen de una foto de la cocina (`image/jpeg`, caché de 1 día) o r
 Tabla de referencia (≈75 alimentos, valores por 100 g basados en USDA FoodData Central) para el autocompletado. **200**.
 
 #### `POST /api/mongo/nutricion/calcular` 🔓 (RF-08)
-Cuerpo: `ingredientes: [{ nombre, cantidad_g, unidad: "g"|"ml", metodo_coccion }]` (máx. 30). Devuelve `calorias`, `proteinas`, `carbos`, `grasas`, los ingredientes `reconocidos` y `no_reconocidos`, y el `indice_transparencia` que tendría el platillo con su `detalle_indice`. Los ingredientes fritos suman 5 g de aceite por cada 100 g.
+Cuerpo: `ingredientes: [{ nombre, cantidad_g, unidad: "g"|"ml", metodo_coccion }]` (máx. 30). Cada alimento reconocido se consulta en la API de **USDA FoodData Central** (base SR Legacy, por 100 g); el resultado queda en la tabla `alimentos_usda` de PostgreSQL. Si USDA no responde o trae un alimento distinto (más de 40 % de diferencia con la referencia), se usa la tabla de Kalo. Devuelve `calorias`, `proteinas`, `carbos`, `grasas`, `fuente`, los ingredientes `reconocidos` (con su `fdc_id` de USDA) y `no_reconocidos`, y el `indice_transparencia` que tendría el platillo con su `detalle_indice`. Los ingredientes fritos suman 5 g de aceite por cada 100 g.
 Respuestas: **200** · **400** DATOS_FALTANTES · **422** SIN_DATOS_NUTRICIONALES o DEMASIADOS_INGREDIENTES.
 
 #### `GET /api/salud` 🔓 (RNF-04)
-Estado del servicio para monitores de disponibilidad: `{ base_de_datos: "conectada", activo_desde_s }`. **200** · **503** si MongoDB no responde. No cuenta para el límite de solicitudes.
+Estado del servicio para monitores de disponibilidad: `{ mongodb, postgresql, usda, activo_desde_s }`. **200** · **503** si alguna de las dos bases no responde. No cuenta para el límite de solicitudes.
 
 ### 3.3 Consultas con sesión
 
@@ -138,7 +146,8 @@ El pago lo autoriza antes la pasarela (RNF-07): el navegador manda los datos de 
   "pago": { "referencia": "pay_sim_4k2j9x0a1b2c3d4e5f6g", "marca": "Visa", "ultimos4": "1111", "metodo": "credito" } }
 ```
 
-Respuestas: **201** `{ mensaje, pedido }` · **400** CARRITO_VACIO o ID_INVALIDO · **402** PAGO_REQUERIDO · **403** · **404** PLATILLO_NO_ENCONTRADO · **422** VARIOS_RESTAURANTES, CANTIDAD_INVALIDA (1 a 20), DEMASIADOS_ITEMS, PAGO_INVALIDO o DATOS_TARJETA_NO_PERMITIDOS.
+Además: descuenta las porciones del stock de forma atómica y anota el pago en la tabla `pagos` de PostgreSQL, cuya `referencia` es UNIQUE.
+Respuestas: **201** `{ mensaje, pedido }` · **400** CARRITO_VACIO o ID_INVALIDO · **402** PAGO_REQUERIDO · **409** SIN_STOCK o PAGO_YA_USADO · **403** · **404** PLATILLO_NO_ENCONTRADO · **422** VARIOS_RESTAURANTES, CANTIDAD_INVALIDA (1 a 20), DEMASIADOS_ITEMS, PAGO_INVALIDO o DATOS_TARJETA_NO_PERMITIDOS.
 
 #### `GET /api/mongo/usuarios/consumo` 🔐 (cliente) · RF-03
 Calorías del día (hora de Chile): `{ meta_calorica_diaria, consumidas_hoy, en_camino_kcal, restantes, porcentaje, pedidos_entregados_hoy }`. Se cuentan los pedidos entregados hoy; se actualiza apenas el repartidor valida el PIN. **200** · **404**.
@@ -172,6 +181,9 @@ Respuestas: **201** `{ platillo, indice_restaurante }` · **400** · **403** · 
 
 #### `GET /api/mongo/platillos/mios` 🔐 (restaurante)
 Todos los platillos del local, incluidos los retirados del menú. **200**.
+
+#### `PUT /api/mongo/platillos/:id/stock` 🔐 (restaurante)
+Cuerpo: `stock` (porciones disponibles, 0 a 9.999). En 0 el platillo aparece "Agotado". **200** · **400** · **404** · **422** STOCK_INVALIDO.
 
 #### `PUT /api/mongo/platillos/:id/estado` 🔐 (restaurante)
 Cuerpo: `activo` (true/false). Publica o retira el platillo del menú y recalcula el índice del local. **200** · **400** · **404**.
@@ -218,10 +230,10 @@ Respuestas: **200** · **400** · **401** PIN_INCORRECTO (indica los intentos qu
 |---|---|---|
 | 400 | Faltan datos, el JSON está mal formado, un parámetro no es válido o trae claves "$…" (inyección NoSQL) | DATOS_FALTANTES, JSON_INVALIDO, PARAMETRO_INVALIDO, ID_INVALIDO, CARRITO_VACIO, DATOS_NO_PERMITIDOS |
 | 402 | Falta la confirmación de pago de la pasarela | PAGO_REQUERIDO |
-| 401 | No hay sesión, el token venció o la credencial es incorrecta | NO_AUTENTICADO, TOKEN_INVALIDO, SESION_VENCIDA, CREDENCIALES_INVALIDAS, PIN_INCORRECTO |
+| 401 | No hay sesión, el token venció, la sesión fue cerrada o la credencial es incorrecta | NO_AUTENTICADO, TOKEN_INVALIDO, SESION_VENCIDA, SESION_CERRADA, CREDENCIALES_INVALIDAS, PIN_INCORRECTO |
 | 403 | El rol no puede hacer esa acción, o el recurso es de otro usuario | SIN_PERMISO |
 | 404 | No existe el recurso o la ruta | PEDIDO_NO_ENCONTRADO, PLATILLO_NO_ENCONTRADO, RUTA_NO_ENCONTRADA |
-| 409 | Choca con el estado actual | CORREO_REGISTRADO, CAMBIO_NO_PERMITIDO, PEDIDO_TOMADO, YA_ENTREGADO, YA_EVALUADO, PLAN_YA_CONTRATADO, SIN_PLAN |
+| 409 | Choca con el estado actual | CORREO_REGISTRADO, CAMBIO_NO_PERMITIDO, PEDIDO_TOMADO, YA_ENTREGADO, YA_EVALUADO, PLAN_YA_CONTRATADO, SIN_PLAN, SIN_STOCK, PAGO_YA_USADO |
 | 413 | El cuerpo supera los 100 KB | CUERPO_DEMASIADO_GRANDE |
 | 422 | Los datos tienen el formato correcto, pero no cumplen las reglas del negocio | CLAVE_DEBIL, BIOMETRIA_INVALIDA, TELEFONO_INVALIDO, VARIOS_RESTAURANTES, NOTA_INVALIDA, DATOS_TARJETA_NO_PERMITIDOS, LIMITE_FOTOS, SIN_DATOS_NUTRICIONALES |
 | 423 | PIN bloqueado por intentos | PIN_BLOQUEADO |
@@ -231,44 +243,41 @@ Respuestas: **200** · **400** · **401** PIN_INCORRECTO (indica los intentos qu
 
 ## 5. Ejemplos
 
-**Iniciar sesión**
+**Iniciar sesión** (`-c` guarda la cookie en un archivo; `-b` la envía después)
 
 ```bash
-curl -X POST http://localhost:3000/api/login \
+curl -c cookies.txt -X POST http://localhost:3000/api/login \
   -H "Content-Type: application/json" \
-  -d '{"correo":"andrea@mail.com","password":"Kalo1234"}'
+  -d '{"correo":"andrea@mail.com","password":"<contraseña>"}'
 ```
 
-```json
-{
-  "exito": true,
-  "mensaje": "¡Bienvenido(a) a Kalo, Andrea Gómez!",
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "expira_en": "8h",
-  "usuario": { "id": "6620f1a4e13b8a1c90000001", "nombre": "Andrea Gómez", "rol": "cliente", "perfil_biometrico": { "imc": 25.2, "meta_calorica_diaria": 1850 } }
-}
+```
+HTTP 200
+Set-Cookie: kalo_sesion=eyJhbGciOi…; Path=/api; HttpOnly; SameSite=Strict; Max-Age=28800
+
+{ "exito": true, "mensaje": "¡Bienvenido(a) a Kalo, Andrea Gómez!", "expira_en": "8h",
+  "usuario": { "id": "6620f1a4e13b8a1c90000001", "nombre": "Andrea Gómez", "rol": "cliente",
+               "perfil_biometrico": { "imc": 25.2, "meta_calorica_diaria": 1550 } } }
 ```
 
 **Crear un pedido (cliente)**
 
 ```bash
-curl -X POST http://localhost:3000/api/mongo/pedidos \
-  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  -d '{"items":[{"platillo_id":"6620f6e3e13b8a1c90000001","cantidad":1}]}'
+curl -b cookies.txt -X POST http://localhost:3000/api/mongo/pedidos \
+  -H "Content-Type: application/json" \
+  -d '{"items":[{"platillo_id":"6620f6e3e13b8a1c90000001","cantidad":1}],
+       "pago":{"referencia":"pay_sim_4k2j9x0a1b2c3d4e5f6g","marca":"Visa","ultimos4":"1111","metodo":"credito"}}'
 ```
 
 ```json
-{ "exito": true, "mensaje": "¡Pedido KALO-2026-677749 creado! Verás tu PIN de entrega cuando el pedido salga del local.",
-  "pedido": { "codigo_pedido": "KALO-2026-677749", "estado": "En Preparación", "total": 9990, "pin_seguridad": null } }
+{ "exito": true, "mensaje": "¡Pago aprobado! Pedido KALO-2026-677749 enviado al local. Verás tu PIN de entrega cuando salga.",
+  "pedido": { "codigo_pedido": "KALO-2026-677749", "estado": "Pagado", "total": 9990, "total_calorias": 520 } }
 ```
 
-**Despachar (restaurante) y validar el PIN (repartidor)**
+**Validar un PIN incorrecto (repartidor, con su propia cookie)**
 
 ```bash
-curl -X PUT http://localhost:3000/api/mongo/pedidos/estado -H "Authorization: Bearer $TOKEN_LOCAL" \
-  -H "Content-Type: application/json" -d '{"codigo_pedido":"KALO-2026-677749","nuevo_estado":"En Camino"}'
-
-curl -X POST http://localhost:3000/api/mongo/pedidos/validar-pin -H "Authorization: Bearer $TOKEN_REPARTIDOR" \
+curl -b cookies-repartidor.txt -X POST http://localhost:3000/api/mongo/pedidos/validar-pin \
   -H "Content-Type: application/json" -d '{"codigo_pedido":"KALO-2026-677749","pin_ingresado":"0000"}'
 ```
 
@@ -276,13 +285,14 @@ curl -X POST http://localhost:3000/api/mongo/pedidos/validar-pin -H "Authorizati
 { "exito": false, "codigo": "PIN_INCORRECTO", "mensaje": "PIN de entrega incorrecto. Te quedan 4 intento(s)." }
 ```
 
-**Ruta protegida sin token**
+**Ruta protegida sin sesión, y sesión ya cerrada**
 
 ```json
 HTTP 401  { "exito": false, "codigo": "NO_AUTENTICADO", "mensaje": "Debes iniciar sesión para usar esta función." }
+HTTP 401  { "exito": false, "codigo": "SESION_CERRADA", "mensaje": "Tu sesión se cerró. Inicia sesión de nuevo." }
 ```
 
-El archivo `scripts/probarApi.js` (`npm run test:api`) ejecuta 75 pruebas de este tipo sobre el flujo completo.
+El archivo `scripts/probarApi.js` (`npm run test:api`) ejecuta 84 pruebas de este tipo sobre el flujo completo.
 
 ## 6. Límites y cuotas
 
@@ -320,6 +330,7 @@ Cada respuesta trae las cabeceras `RateLimit-Policy` y `RateLimit` (límite, sol
 | Requisito | Cómo se cumple |
 |---|---|
 | RNF-01 Mobile-first | Grilla de Bootstrap: barra inferior en celular, filtros en panel deslizable, tablero en columnas en escritorio. |
+| Base relacional | PostgreSQL (`src/config/postgres.js`, `src/Modelos/sql/`): tablas cuentas, sesiones, pagos, accesos y alimentos_usda. Todas las consultas son parametrizadas (`$1, $2`), nunca se concatena texto en el SQL. |
 | RNF-02 Datos de salud | Contraseñas con bcrypt. Peso, altura, edad, IMC, meta y objetivo se guardan cifrados con AES-256-GCM (`src/utils/cifrado.js`, clave `DATOS_SALUD_CLAVE`). `npm run cifrar-salud` cifra las cuentas antiguas. |
 | RNF-03 Rendimiento | Compresión gzip, índices en `platillos`, `restaurantes`, `pedidos` y `fotos_cocina`, consultas `lean()`, pantallas cargadas por partes (code splitting) y caché de imágenes. |
 | RNF-04 Disponibilidad | `GET /api/salud` para el monitor, reconexión automática a Atlas, cierre ordenado con SIGTERM y aviso "sin conexión" en la app. |
